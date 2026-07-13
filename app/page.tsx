@@ -2,13 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import {
-  COMPANIES,
-  Project,
-  computeProgress,
-  daysUntil,
-  todayStr,
-} from "@/lib/erp";
+import { COMPANIES, Project, todayStr } from "@/lib/erp";
 import Link from "next/link";
 import ProjectCard from "@/components/ProjectCard";
 import ProjectSheet from "@/components/ProjectSheet";
@@ -41,13 +35,6 @@ export default function HomePage() {
   );
 
   const dashTotal = companyProjects.length;
-  const dashAvg = dashTotal
-    ? Math.round(companyProjects.reduce((s, p) => s + computeProgress(p), 0) / dashTotal)
-    : 0;
-  const dashLate = companyProjects.filter((p) => {
-    const d = daysUntil(p.endDate);
-    return d !== null && d < 0 && computeProgress(p) < 100;
-  }).length;
 
   function updateProjectInList(updated: Project) {
     setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -93,23 +80,6 @@ export default function HomePage() {
         </div>
         <div style={{ fontSize: 10, color: "#8fb9c9", padding: "6px 0 10px 0" }}>
           ⚠️ 이 화면을 여는 모든 사람이 같은 데이터를 함께 보고 수정해요
-        </div>
-      </div>
-
-      <div className="dash">
-        <div className="dcard">
-          <div className="num">{dashTotal}</div>
-          <div className="lbl">진행 공사</div>
-        </div>
-        <div className="dcard">
-          <div className="num">{dashAvg}%</div>
-          <div className="lbl">평균 공정률</div>
-        </div>
-        <div className="dcard">
-          <div className="num" style={{ color: dashLate > 0 ? "var(--danger)" : "var(--ink)" }}>
-            {dashLate}
-          </div>
-          <div className="lbl">기한 초과</div>
         </div>
       </div>
 
