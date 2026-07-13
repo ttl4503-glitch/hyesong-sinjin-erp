@@ -1044,6 +1044,20 @@ export default function ProjectSheet({
                               </div>
                               {isOpen && (
                                 <div className="lg-group-body">
+                                  <a
+                                    href={`/print/${project.id}/${encodeURIComponent(d.date)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="wi-upload-btn"
+                                    style={{
+                                      display: "inline-block",
+                                      marginTop: 8,
+                                      textDecoration: "none",
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    🖨 이 날짜 일보 인쇄/저장
+                                  </a>
                                   <div style={{ padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
                                     {editingNoteDate === d.date ? (
                                       <>
