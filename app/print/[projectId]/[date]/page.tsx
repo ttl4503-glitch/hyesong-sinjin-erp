@@ -80,6 +80,12 @@ export default function PrintDailyReportPage() {
             <td className="num">{formatWon(doc.contractAmount)}원</td>
           </tr>
           <tr>
+            <td className="label">착공일</td>
+            <td>{fmtDate(doc.startDate)}</td>
+            <td className="label">준공(예정)일</td>
+            <td>{fmtDate(doc.endDate)}</td>
+          </tr>
+          <tr>
             <td className="label">누적 노무비</td>
             <td className="num">{formatWon(doc.cumLabor)}원</td>
             <td className="label">누적 경비(장비)</td>
@@ -91,6 +97,12 @@ export default function PrintDailyReportPage() {
             <td className="label">누적 순공사비</td>
             <td className="num" style={{ fontWeight: 700 }}>
               {formatWon(doc.cumTotal)}원
+            </td>
+          </tr>
+          <tr>
+            <td className="label">공정률</td>
+            <td colSpan={3} className="num" style={{ textAlign: "left", fontWeight: 700 }}>
+              {doc.progressPct}%
             </td>
           </tr>
         </tbody>

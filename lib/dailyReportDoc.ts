@@ -8,7 +8,10 @@ export interface DailyReportDoc {
   date: string;
   company: string;
   projectName: string;
+  startDate: string;
+  endDate: string;
   contractAmount: number;
+  progressPct: number;
   workContent: string;
   cumLabor: number;
   cumEquip: number;
@@ -56,11 +59,17 @@ export function buildDailyReportDoc(project: Project, date: string): DailyReport
       });
   }
 
+  const progressPct =
+    project.contractAmount > 0 ? Math.round((cumTotal / project.contractAmount) * 100) : 0;
+
   return {
     date,
     company: project.company,
     projectName: project.name,
+    startDate: project.startDate,
+    endDate: project.endDate,
     contractAmount: project.contractAmount,
+    progressPct,
     workContent: project.dailyNotes.find((n) => n.date === date)?.content || "",
     cumLabor,
     cumEquip,
