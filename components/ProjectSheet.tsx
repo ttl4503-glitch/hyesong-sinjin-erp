@@ -183,6 +183,11 @@ export default function ProjectSheet({
     setOpenTypes((prev) => ({ ...prev, [type]: !prev[type] }));
   }
 
+  const [openDates, setOpenDates] = useState<Record<string, boolean>>({});
+  function toggleDate(date: string) {
+    setOpenDates((prev) => ({ ...prev, [date]: !prev[date] }));
+  }
+
   const draftPseudoProject: Project | null = project
     ? { ...project, contractAmount: Number(form.contractAmount) || project.contractAmount }
     : null;
@@ -489,6 +494,20 @@ export default function ProjectSheet({
     const amount = logs.reduce((s, l) => s + (Number(l.amount) || 0), 0);
     return { type, logs, qty, amount };
   }).filter((g) => g.logs.length > 0);
+
+  const groupedByDate = Object.values(
+    (project?.laborLogs || []).reduce<Record<string, { date: string; logs: LaborLog[] }>>((acc, l) => {
+      const d = l.date || "날짜 미상";
+      if (!acc[d]) acc[d] = { date: d, logs: [] };
+      acc[d].logs.push(l);
+      return acc;
+    }, {})
+  )
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .map((d) => ({
+      ...d,
+      amount: d.logs.reduce((s, l) => s + (Number(l.amount) || 0), 0),
+    }));
 
   return (
     <div className="overlay open" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -994,6 +1013,66 @@ export default function ProjectSheet({
               </button>
             </div>
 
+            <div className="ms-title">작업일보 (날짜별)</div>
+            <div style={{ marginBottom: 14 }}>
+              {groupedByDate.length === 0 && (
+                <div style={{ fontSize: 12, color: "#a09a89", padding: "6px 0" }}>
+                  등록된 일보가 없어요.
+                </div>
+              )}
+              {groupedByDate.map((d) => {
+                const isOpen = !!openDates[d.date];
+                const byType = TYPES_ORDER.map((type) => ({
+                  type,
+                  logs: d.logs.filter((l) => l.type === type),
+                })).filter((g) => g.logs.length > 0);
+                return (
+                  <div className="lg-group" key={d.date}>
+                    <div className="lg-group-header" onClick={() => toggleDate(d.date)}>
+                      <div className="lg-group-meta" style={{ flex: "none", fontWeight: 700, color: "var(--ink)" }}>
+                        {fmtDate(d.date)}
+                      </div>
+                      <div className="lg-group-meta">
+                        {d.logs.length}건 · {formatWon(d.amount)}원
+                      </div>
+                      <div className={`chevron ${isOpen ? "open" : ""}`}>▸</div>
+                    </div>
+                    {isOpen && (
+                      <div className="lg-group-body">
+                        {byType.map((g) => (
+                          <div key={g.type} style={{ padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
+                            <div
+                              className={`lg-type ${TYPE_CLASS[g.type] || "misc"}`}
+                              style={{ display: "inline-block", marginBottom: 6 }}
+                            >
+                              {g.type}
+                            </div>
+                            {g.logs.map((l) => {
+                              const qtyPart = l.qty ? `${l.qty}${l.unit || ""}` : "";
+                              const ratePart =
+                                l.rate && (l.type === "인력" || l.type === "장비")
+                                  ? `단가 ${formatWon(l.rate)}원`
+                                  : "";
+                              const amountPart = l.amount ? formatWon(l.amount) + "원" : "";
+                              const mid = [qtyPart, ratePart, amountPart].filter(Boolean).join(" · ");
+                              return (
+                                <div key={l.id} style={{ fontSize: 12, padding: "3px 0" }}>
+                                  {l.jobType ? l.jobType + " · " : ""}
+                                  {l.name}
+                                  {mid ? " · " + mid : ""}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="ms-title">유형별 누적 (인력·장비·자재·식대·잡자재)</div>
             <div>
               {groupedLogs.length === 0 && (
                 <div style={{ fontSize: 12, color: "#a09a89", padding: "6px 0" }}>

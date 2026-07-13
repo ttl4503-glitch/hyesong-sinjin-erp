@@ -20,6 +20,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState(COMPANIES[0]);
   const [sheet, setSheet] = useState<SheetState>(null);
+  const [reportMonth, setReportMonth] = useState(todayStr().slice(0, 7));
 
   useEffect(() => {
     api
@@ -140,7 +141,37 @@ export default function HomePage() {
           style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
           href={`/api/export/monthly?company=${encodeURIComponent(company)}`}
         >
-          📊 인력·장비 월별 집계 엑셀 다운로드
+          📊 월별 집계 엑셀 다운로드 (인력·장비·자재·식대)
+        </a>
+      </div>
+
+      <div style={{ padding: "8px 16px 0 16px", display: "flex", gap: 6 }}>
+        <input
+          type="month"
+          value={reportMonth}
+          onChange={(e) => setReportMonth(e.target.value)}
+          style={{
+            flex: "0 0 130px",
+            padding: "0 8px",
+            border: "1px solid var(--line)",
+            borderRadius: 6,
+            fontSize: 12,
+            background: "#fff",
+            color: "var(--ink)",
+          }}
+        />
+        <a
+          className="export-btn"
+          style={{
+            flex: 1,
+            padding: 10,
+            display: "block",
+            textAlign: "center",
+            textDecoration: "none",
+          }}
+          href={`/api/export/labor-report?company=${encodeURIComponent(company)}&month=${reportMonth}`}
+        >
+          🧾 노무비 신고용 집계 (인력·장비·자재별)
         </a>
       </div>
 
