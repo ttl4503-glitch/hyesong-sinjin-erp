@@ -8,6 +8,71 @@ import type { Worker } from "@/lib/erp";
 const ID_FRONT_RE = /\b(\d{6})[-\s]?\d{0,7}\b/;
 const ACCOUNT_RE = /\b(\d[\d-\s]{8,20}\d)\b/;
 
+// Lines on a Korean ID card that are NOT the person's name — used to filter
+// out boilerplate when guessing which line is the name.
+const ID_CARD_NOISE = [
+  "주민등록증",
+  "운전면허증",
+  "성명",
+  "생년월일",
+  "주소",
+  "발급",
+  "발급일",
+  "행정안전부",
+  "경찰청",
+  "지문",
+  "서명",
+  "고유번호",
+  "종류",
+  "대한민국",
+  "면허번호",
+  "적성검사",
+];
+
+const KNOWN_BANKS = [
+  "국민은행",
+  "KB국민",
+  "신한은행",
+  "우리은행",
+  "하나은행",
+  "농협",
+  "NH농협",
+  "기업은행",
+  "IBK기업",
+  "새마을금고",
+  "우체국",
+  "카카오뱅크",
+  "토스뱅크",
+  "SC제일",
+  "씨티은행",
+  "부산은행",
+  "대구은행",
+  "경남은행",
+  "광주은행",
+  "전북은행",
+  "제주은행",
+  "신협",
+  "수협",
+];
+
+function extractName(text: string): string {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.replace(/\s+/g, "").trim())
+    .filter(Boolean);
+  for (const line of lines) {
+    if (!/^[가-힣]{2,4}$/.test(line)) continue;
+    if (ID_CARD_NOISE.some((n) => line.includes(n))) continue;
+    return line;
+  }
+  return "";
+}
+
+function extractBankName(text: string): string {
+  const found = KNOWN_BANKS.find((b) => text.includes(b));
+  return found || "";
+}
+
 function emptyForm() {
   return { name: "", jobType: "", idFront: "", bankName: "", account: "" };
 }
@@ -22,7 +87,8 @@ export default function WorkersPage() {
 
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrText, setOcrText] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const idFileInputRef = useRef<HTMLInputElement>(null);
+  const bankFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api
@@ -74,28 +140,53 @@ export default function WorkersPage() {
     if (editingId === id) cancelEdit();
   }
 
-  async function handlePhoto(file: File) {
+  async function runOcr(file: File): Promise<string> {
+    const { createWorker } = await import("tesseract.js");
+    const worker = await createWorker("kor+eng");
+    const {
+      data: { text },
+    } = await worker.recognize(file);
+    await worker.terminate();
+    return text;
+  }
+
+  async function handleIdPhoto(file: File) {
     setOcrBusy(true);
     setOcrText("");
     setError("");
     try {
-      const { createWorker } = await import("tesseract.js");
-      const worker = await createWorker("kor+eng");
-      const {
-        data: { text },
-      } = await worker.recognize(file);
-      await worker.terminate();
+      const text = await runOcr(file);
       setOcrText(text);
-
       const idMatch = text.match(ID_FRONT_RE);
-      const accountMatch = text.match(ACCOUNT_RE);
+      const name = extractName(text);
       setForm((f) => ({
         ...f,
+        name: name || f.name,
         idFront: idMatch ? idMatch[1] : f.idFront,
+      }));
+    } catch {
+      setError("신분증 인식에 실패했어요. 직접 입력해주세요.");
+    } finally {
+      setOcrBusy(false);
+    }
+  }
+
+  async function handleBankPhoto(file: File) {
+    setOcrBusy(true);
+    setOcrText("");
+    setError("");
+    try {
+      const text = await runOcr(file);
+      setOcrText(text);
+      const accountMatch = text.match(ACCOUNT_RE);
+      const bank = extractBankName(text);
+      setForm((f) => ({
+        ...f,
+        bankName: bank || f.bankName,
         account: accountMatch ? accountMatch[1].replace(/[\s-]/g, "") : f.account,
       }));
-    } catch (e: any) {
-      setError("사진 인식에 실패했어요. 직접 입력해주세요.");
+    } catch {
+      setError("통장 인식에 실패했어요. 직접 입력해주세요.");
     } finally {
       setOcrBusy(false);
     }
@@ -162,21 +253,46 @@ export default function WorkersPage() {
           <input value={form.account} onChange={(e) => setForm({ ...form, account: e.target.value })} />
         </div>
 
-        <button
-          className="wi-upload-btn"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={ocrBusy}
-        >
-          📷 {ocrBusy ? "사진 인식 중..." : "사진으로 인식해서 채우기"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className="wi-upload-btn"
+            style={{ flex: 1 }}
+            onClick={() => idFileInputRef.current?.click()}
+            disabled={ocrBusy}
+          >
+            🪪 {ocrBusy ? "인식 중..." : "신분증 → 이름·주민번호"}
+          </button>
+          <button
+            className="wi-upload-btn"
+            style={{ flex: 1 }}
+            onClick={() => bankFileInputRef.current?.click()}
+            disabled={ocrBusy}
+          >
+            🏦 {ocrBusy ? "인식 중..." : "통장 → 은행·계좌번호"}
+          </button>
+        </div>
+        <div className="progress-auto-sub" style={{ textAlign: "left", marginTop: 4 }}>
+          주민등록증·운전면허증 사진은 왼쪽, 통장 사본·통장 사진은 오른쪽 버튼으로 올려주세요.
+        </div>
         <input
-          ref={fileInputRef}
+          ref={idFileInputRef}
           type="file"
           accept="image/*"
           style={{ display: "none" }}
           onChange={(e) => {
             const f = e.target.files?.[0];
-            if (f) handlePhoto(f);
+            if (f) handleIdPhoto(f);
+            e.target.value = "";
+          }}
+        />
+        <input
+          ref={bankFileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleBankPhoto(f);
             e.target.value = "";
           }}
         />
