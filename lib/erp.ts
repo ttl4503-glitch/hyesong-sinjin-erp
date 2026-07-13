@@ -39,6 +39,7 @@ export interface LaborLog {
   note: string;
   taxInvoice: boolean;
   workItemId: string | null;
+  receipt?: { id: string } | null;
 }
 
 export interface DailyNote {

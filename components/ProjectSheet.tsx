@@ -17,6 +17,9 @@ import {
 } from "@/lib/erp";
 import { api } from "@/lib/api";
 import type { ParsedWorkItem } from "@/lib/parseWorkItems";
+import { compressImage } from "@/lib/compressImage";
+
+const RECEIPT_TYPES = ["자재", "식대", "참", "잡자재"];
 
 interface DraftWorkItem extends ParsedWorkItem {
   _key: string;
@@ -61,16 +64,18 @@ const TYPE_CLASS: Record<string, string> = {
   장비: "equip",
   자재: "material",
   식대: "meal",
+  참: "snack",
   잡자재: "misc",
 };
 
-const TYPES_ORDER = ["인력", "장비", "자재", "식대", "잡자재"];
+const TYPES_ORDER = ["인력", "장비", "자재", "식대", "참", "잡자재"];
 
 const DEFAULT_UNIT: Record<string, string> = {
   인력: "공수",
   장비: "공수",
   자재: "개",
   식대: "건",
+  참: "건",
   잡자재: "건",
 };
 
@@ -79,6 +84,7 @@ const NAME_PLACEHOLDER: Record<string, string> = {
   장비: "장비명 (예: 굴삭기 0.6)",
   자재: "자재명 (예: 마사토)",
   식대: "항목 (예: 점심식사)",
+  참: "항목 (예: 오후참)",
   잡자재: "항목 (예: 소모품)",
 };
 
@@ -211,6 +217,56 @@ export default function ProjectSheet({
         : [...project.dailyNotes, updated],
     });
     setEditingNoteDate(null);
+  }
+
+  const [receiptBusyId, setReceiptBusyId] = useState<string | null>(null);
+  const [viewingReceipt, setViewingReceipt] = useState<string | null>(null);
+  const [pendingReceiptLogId, setPendingReceiptLogId] = useState<string | null>(null);
+  const receiptInputRef = useRef<HTMLInputElement>(null);
+
+  function triggerReceiptUpload(logId: string) {
+    setPendingReceiptLogId(logId);
+    receiptInputRef.current?.click();
+  }
+
+  async function handleReceiptFile(file: File) {
+    if (!project || !pendingReceiptLogId) return;
+    const logId = pendingReceiptLogId;
+    setReceiptBusyId(logId);
+    try {
+      const dataUrl = await compressImage(file);
+      await api.uploadReceipt(logId, dataUrl);
+      onProjectUpdated({
+        ...project,
+        laborLogs: project.laborLogs.map((l) => (l.id === logId ? { ...l, receipt: { id: logId } } : l)),
+      });
+    } catch (e: any) {
+      alert(e.message || "영수증 업로드에 실패했어요.");
+    } finally {
+      setReceiptBusyId(null);
+      setPendingReceiptLogId(null);
+    }
+  }
+
+  async function viewReceipt(logId: string) {
+    try {
+      const { imageData } = await api.getReceipt(logId);
+      setPendingReceiptLogId(logId);
+      setViewingReceipt(imageData);
+    } catch {
+      alert("영수증을 불러오지 못했어요.");
+    }
+  }
+
+  async function deleteReceipt(logId: string) {
+    if (!project) return;
+    if (!confirm("영수증 사진을 삭제할까요?")) return;
+    await api.deleteReceipt(logId);
+    onProjectUpdated({
+      ...project,
+      laborLogs: project.laborLogs.map((l) => (l.id === logId ? { ...l, receipt: null } : l)),
+    });
+    setViewingReceipt(null);
   }
 
   const draftPseudoProject: Project | null = project
@@ -895,7 +951,7 @@ export default function ProjectSheet({
                   자재·식대
                 </div>
                 {dailyRows
-                  .filter((r) => r.type === "자재" || r.type === "식대" || r.type === "잡자재")
+                  .filter((r) => r.type === "자재" || r.type === "식대" || r.type === "참" || r.type === "잡자재")
                   .map((r) => (
                     <div className="wi-edit-row" key={r._key}>
                       <div className="wi-edit-row-top">
@@ -904,9 +960,10 @@ export default function ProjectSheet({
                           value={r.type}
                           onChange={(e) => updateDailyRow(r._key, "type", e.target.value)}
                         >
-                          <option value="자재">자재</option>
+                          <option value="자재">자재대</option>
                           <option value="식대">식대</option>
-                          <option value="잡자재">잡자재</option>
+                          <option value="참">참</option>
+                          <option value="잡자재">잡자재비</option>
                         </select>
                         <input
                           className="wi-edit-name"
@@ -1196,6 +1253,21 @@ export default function ProjectSheet({
                                   {l.note ? " · " + l.note : ""}
                                 </div>
                               </div>
+                              {RECEIPT_TYPES.includes(l.type) && (
+                                <div
+                                  className="lg-edit"
+                                  style={l.receipt ? { color: "var(--blueprint-light)" } : undefined}
+                                  onClick={() =>
+                                    receiptBusyId === l.id
+                                      ? undefined
+                                      : l.receipt
+                                      ? viewReceipt(l.id)
+                                      : triggerReceiptUpload(l.id)
+                                  }
+                                >
+                                  {receiptBusyId === l.id ? "…" : "🧾"}
+                                </div>
+                              )}
                               <div className="lg-edit" onClick={() => startEditLog(l)}>
                                 ✎
                               </div>
@@ -1238,8 +1310,9 @@ export default function ProjectSheet({
               <select value={logForm.type} onChange={(e) => onLgTypeChange(e.target.value)}>
                 <option value="인력">인력</option>
                 <option value="장비">장비</option>
-                <option value="자재">자재(반입)</option>
+                <option value="자재">자재대(반입)</option>
                 <option value="식대">식대</option>
+                <option value="참">참</option>
                 <option value="잡자재">잡자재비</option>
               </select>
               {project.workItems.length > 0 ? (
@@ -1356,6 +1429,51 @@ export default function ProjectSheet({
           닫기
         </button>
       </div>
+
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        ref={receiptInputRef}
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleReceiptFile(file);
+          e.target.value = "";
+        }}
+      />
+
+      {viewingReceipt && (
+        <div
+          className="overlay open"
+          style={{ zIndex: 200 }}
+          onClick={(e) => e.target === e.currentTarget && setViewingReceipt(null)}
+        >
+          <div className="sheet" style={{ maxWidth: 520, textAlign: "center" }}>
+            <div className="sheet-handle" />
+            <h2>영수증</h2>
+            <img
+              src={viewingReceipt}
+              alt="영수증"
+              style={{ width: "100%", borderRadius: 8, marginBottom: 12 }}
+            />
+            {pendingReceiptLogId && (
+              <button className="btn-danger" onClick={() => deleteReceipt(pendingReceiptLogId)}>
+                영수증 삭제
+              </button>
+            )}
+            <button
+              className="btn-ghost"
+              onClick={() => {
+                setViewingReceipt(null);
+                setPendingReceiptLogId(null);
+              }}
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

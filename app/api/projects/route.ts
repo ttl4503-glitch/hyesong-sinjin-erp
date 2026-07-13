@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   const projects = await prisma.project.findMany({
-    include: { milestones: true, laborLogs: true, workItems: true, dailyNotes: true },
+    include: { milestones: true, laborLogs: { include: { receipt: { select: { id: true } } } }, workItems: true, dailyNotes: true },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json(projects);
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       progress: Number(body.progress) || 0,
       memo: body.memo?.trim() || "",
     },
-    include: { milestones: true, laborLogs: true, workItems: true, dailyNotes: true },
+    include: { milestones: true, laborLogs: { include: { receipt: { select: { id: true } } } }, workItems: true, dailyNotes: true },
   });
   return NextResponse.json(project);
 }

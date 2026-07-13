@@ -88,4 +88,13 @@ model LaborLog {
   taxInvoice Boolean   @default(false)
   workItemId String?
   workItem   WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+  receipt    Receipt?
+}
+
+model Receipt {
+  id         String   @id @default(cuid())
+  laborLogId String   @unique
+  laborLog   LaborLog @relation(fields: [laborLogId], references: [id], onDelete: Cascade)
+  imageData  String   @db.Text // base64 data URL, compressed client-side before upload
+  createdAt  DateTime @default(now())
 }

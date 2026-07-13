@@ -120,4 +120,17 @@ export const api = {
 
   deleteWorker: (id: string): Promise<{ ok: true }> =>
     fetch(`/api/workers/${id}`, { method: "DELETE" }).then(handle),
+
+  uploadReceipt: (logId: string, imageData: string): Promise<{ id: string }> =>
+    fetch(`/api/laborlogs/${logId}/receipt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageData }),
+    }).then(handle),
+
+  getReceipt: (logId: string): Promise<{ imageData: string }> =>
+    fetch(`/api/laborlogs/${logId}/receipt`).then(handle),
+
+  deleteReceipt: (logId: string): Promise<{ ok: true }> =>
+    fetch(`/api/laborlogs/${logId}/receipt`, { method: "DELETE" }).then(handle),
 };
