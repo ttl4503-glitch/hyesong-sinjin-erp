@@ -1,5 +1,14 @@
 export const COMPANIES = ["혜송산업개발", "신진조경"];
 
+export interface Worker {
+  id: string;
+  name: string;
+  jobType: string;
+  idFront: string;
+  bankName: string;
+  account: string;
+}
+
 export interface Milestone {
   id: string;
   title: string;

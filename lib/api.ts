@@ -1,4 +1,4 @@
-import type { Project } from "@/lib/erp";
+import type { Project, Worker } from "@/lib/erp";
 import type { ParsedWorkItem } from "@/lib/parseWorkItems";
 
 export interface WorkItemsParseResult {
@@ -101,4 +101,23 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }).then(handle),
+
+  listWorkers: (): Promise<Worker[]> => fetch("/api/workers").then(handle),
+
+  createWorker: (data: Partial<Worker>): Promise<Worker> =>
+    fetch("/api/workers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }).then(handle),
+
+  updateWorker: (id: string, data: Partial<Worker>): Promise<Worker> =>
+    fetch(`/api/workers/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }).then(handle),
+
+  deleteWorker: (id: string): Promise<{ ok: true }> =>
+    fetch(`/api/workers/${id}`, { method: "DELETE" }).then(handle),
 };

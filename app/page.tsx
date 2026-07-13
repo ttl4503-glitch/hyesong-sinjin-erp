@@ -9,6 +9,7 @@ import {
   daysUntil,
   todayStr,
 } from "@/lib/erp";
+import Link from "next/link";
 import ProjectCard from "@/components/ProjectCard";
 import ProjectSheet from "@/components/ProjectSheet";
 
@@ -146,10 +147,20 @@ export default function HomePage() {
             textAlign: "center",
             textDecoration: "none",
           }}
-          href={`/api/export/labor-report?company=${encodeURIComponent(company)}&month=${reportMonth}`}
+          href={`/api/export/labor-report?month=${reportMonth}`}
         >
-          🧾 노무비 신고용 집계 (인력·장비·자재별)
+          🧾 노무비 신고용 집계 (혜송+신진 합산)
         </a>
+      </div>
+
+      <div style={{ padding: "8px 16px 0 16px" }}>
+        <Link
+          href="/workers"
+          className="export-btn"
+          style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
+        >
+          👤 인원 명부 관리 (주민번호·계좌)
+        </Link>
       </div>
 
       <div className="section-label">

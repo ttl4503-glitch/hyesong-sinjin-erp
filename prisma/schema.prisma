@@ -28,6 +28,17 @@ model Project {
   dailyNotes DailyNote[]
 }
 
+model Worker {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  jobType   String   @default("")
+  idFront   String   @default("") // 주민번호 앞자리 (생년월일, YYMMDD)
+  bankName  String   @default("")
+  account   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model DailyNote {
   id        String  @id @default(cuid())
   projectId String
