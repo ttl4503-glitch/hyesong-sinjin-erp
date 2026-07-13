@@ -746,15 +746,31 @@ export default function ProjectSheet({
                   ) : (
                     <div
                       className="wi-summary"
-                      style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        cursor: "pointer",
+                        background: "var(--paper-dark)",
+                        margin: "-12px -12px 8px -12px",
+                        padding: "10px 12px",
+                        borderRadius: "8px 8px 0 0",
+                      }}
                       onClick={() => setBoqOpen((v) => !v)}
                     >
+                      <span style={{ fontSize: 15 }}>{boqOpen ? "📂" : "📁"}</span>
                       <span style={{ flex: 1 }}>
                         착공내역서 합계: <b>{formatWon(project.workItemsTotal)}원</b> · 공종{" "}
                         <b>{project.workItems.length}개</b>
                         {project.workItemsFileName ? " · " + project.workItemsFileName : ""}
+                        <br />
+                        <span style={{ fontSize: 11, color: "#8a8371" }}>
+                          {boqOpen ? "탭하면 접어요" : "탭하면 공종별 내역이 펼쳐져요"}
+                        </span>
                       </span>
-                      <span className={`chevron ${boqOpen ? "open" : ""}`}>▸</span>
+                      <span className={`chevron ${boqOpen ? "open" : ""}`} style={{ fontSize: 16 }}>
+                        ▸
+                      </span>
                     </div>
                   )}
                   <button className="wi-upload-btn" onClick={() => fileInputRef.current?.click()}>
