@@ -15,7 +15,13 @@ export interface ParsedWorkbook {
   sheetName: string;
 }
 
-const nameKeys = ["공종", "품명", "항목", "명칭", "품목"];
+// "품명" (item name) is listed first on purpose: some 내역서 layouts have
+// BOTH a "공종" column (section number like "1." / "1)", only filled on
+// category/subtotal rows) and a separate "품명" column (the actual item
+// name, filled on every leaf row). When both exist we must prefer "품명" —
+// see findNameCol below, which checks keys in this priority order across
+// ALL columns rather than scanning column-by-column.
+const nameKeys = ["품명", "공종", "품목", "명칭", "항목"];
 const specKeys = ["규격", "규격/모델", "사양"];
 const unitKeys = ["단위"];
 const qtyKeys = ["수량"];
@@ -41,6 +47,17 @@ function findCol(row: string[], keys: string[]) {
   return row.findIndex((cell) => keys.some((k) => cell.includes(k)));
 }
 
+// Unlike findCol (leftmost column matching ANY key), this checks keys in
+// priority order across ALL columns — so "품명" wins over "공종" even when
+// "공종" sits in an earlier column.
+function findNameCol(row: string[], keys: string[]) {
+  for (const key of keys) {
+    const idx = row.findIndex((cell) => cell.includes(key));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
 // Some 내역서 layouts split the header across two rows: row N has
 // 공종/규격/수량/단위, row N+1 has 단가/금액 (merged-cell sub-headers).
 // Scan a small window below the name row and take the first match per column.
@@ -48,7 +65,7 @@ function findHeaderRow(aoa: string[][]): { headerRowIdx: number; cols: Record<st
   const WINDOW = 3;
   for (let i = 0; i < Math.min(aoa.length, 15); i++) {
     const row0 = (aoa[i] || []).map(normCell);
-    const nameIdx = findCol(row0, nameKeys);
+    const nameIdx = findNameCol(row0, nameKeys);
     if (nameIdx < 0) continue;
 
     const cols = { spec: -1, unit: -1, qty: -1, price: -1, amount: -1 };
