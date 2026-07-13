@@ -7,7 +7,6 @@ import {
   Project,
   computeProgress,
   daysUntil,
-  formatWon,
   todayStr,
 } from "@/lib/erp";
 import ProjectCard from "@/components/ProjectCard";
@@ -48,21 +47,6 @@ export default function HomePage() {
     const d = daysUntil(p.endDate);
     return d !== null && d < 0 && computeProgress(p) < 100;
   }).length;
-
-  const today = todayStr();
-  let personCount = 0;
-  let equipCount = 0;
-  let costTotal = 0;
-  companyProjects.forEach((p) => {
-    p.laborLogs.forEach((l) => {
-      if (l.date === today) {
-        const q = Number(l.qty) || 0;
-        if (l.type === "인력") personCount += q;
-        else if (l.type === "장비") equipCount += q;
-        costTotal += Number(l.amount) || 0;
-      }
-    });
-  });
 
   function updateProjectInList(updated: Project) {
     setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -126,13 +110,6 @@ export default function HomePage() {
           </div>
           <div className="lbl">기한 초과</div>
         </div>
-      </div>
-
-      <div className="today-strip">
-        <span>오늘({today}) 전체 현장 투입</span>
-        <span>
-          <b>인력 {personCount}공수</b> · <b>장비 {equipCount}공수</b> · <b>비용 {formatWon(costTotal)}원</b>
-        </span>
       </div>
 
       <div style={{ padding: "10px 16px 0 16px" }}>
