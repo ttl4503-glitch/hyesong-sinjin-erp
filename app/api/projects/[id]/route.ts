@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const project = await prisma.project.update({
     where: { id: params.id },
     data,
-    include: { milestones: true, laborLogs: true, workItems: true },
+    include: { milestones: true, laborLogs: true, workItems: true, dailyNotes: true },
   });
   return NextResponse.json(project);
 }

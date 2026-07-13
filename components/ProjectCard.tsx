@@ -1,4 +1,4 @@
-import { Project, computeProgress, daysUntil, fmtDate } from "@/lib/erp";
+import { Project, computeProgress, daysUntil, fmtDate, formatWon, totalInvestedCost } from "@/lib/erp";
 
 export default function ProjectCard({
   project,
@@ -49,9 +49,7 @@ export default function ProjectCard({
         </div>
       </div>
       <div className="status-row">
-        <span>
-          완료 일정 {project.milestones.filter((m) => m.done).length}/{project.milestones.length}
-        </span>
+        <span>누적 투입비용 {formatWon(totalInvestedCost(project))}원</span>
         <span className={`dday ${late ? "late" : ""}`}>{ddayText}</span>
       </div>
     </div>

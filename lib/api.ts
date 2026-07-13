@@ -76,6 +76,13 @@ export const api = {
       body: JSON.stringify({ entries }),
     }).then(handle),
 
+  upsertDailyNote: (projectId: string, date: string, content: string) =>
+    fetch(`/api/projects/${projectId}/dailynotes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date, content }),
+    }).then(handle),
+
   parseWorkItems: (projectId: string, file: File): Promise<WorkItemsParseResult> => {
     const formData = new FormData();
     formData.append("file", file);

@@ -32,6 +32,12 @@ export interface LaborLog {
   workItemId: string | null;
 }
 
+export interface DailyNote {
+  id: string;
+  date: string;
+  content: string;
+}
+
 export interface Project {
   id: string;
   company: string;
@@ -47,6 +53,7 @@ export interface Project {
   milestones: Milestone[];
   laborLogs: LaborLog[];
   workItems: WorkItem[];
+  dailyNotes: DailyNote[];
 }
 
 export function formatWon(n: number | string | null | undefined): string {

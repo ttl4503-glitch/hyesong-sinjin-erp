@@ -208,6 +208,7 @@ export default function HomePage() {
           mode={sheet.mode}
           project={editingProject}
           allProjects={projects}
+          defaultCompany={company}
           onClose={() => setSheet(null)}
           onCreated={addProjectToList}
           onProjectUpdated={updateProjectInList}

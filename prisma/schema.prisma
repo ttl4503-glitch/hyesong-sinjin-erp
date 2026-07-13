@@ -25,6 +25,17 @@ model Project {
   milestones Milestone[]
   laborLogs  LaborLog[]
   workItems  WorkItem[]
+  dailyNotes DailyNote[]
+}
+
+model DailyNote {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  date      String
+  content   String  @default("")
+
+  @@unique([projectId, date])
 }
 
 model Milestone {

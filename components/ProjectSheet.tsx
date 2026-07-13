@@ -132,6 +132,7 @@ export default function ProjectSheet({
   mode,
   project,
   allProjects,
+  defaultCompany,
   onClose,
   onCreated,
   onProjectUpdated,
@@ -140,6 +141,7 @@ export default function ProjectSheet({
   mode: "add" | "edit";
   project: Project | null;
   allProjects: Project[];
+  defaultCompany?: string;
   onClose: () => void;
   onCreated: (p: Project) => void;
   onProjectUpdated: (p: Project) => void;
@@ -148,20 +150,16 @@ export default function ProjectSheet({
   const isEdit = mode === "edit" && !!project;
 
   const [form, setForm] = useState({
-    company: project?.company || COMPANIES[0],
+    company: project?.company || defaultCompany || COMPANIES[0],
     name: project?.name || "",
     location: project?.location || "",
     startDate: project?.startDate || "",
     endDate: project?.endDate || "",
     contractAmount: project?.contractAmount ? String(project.contractAmount) : "",
-    memo: project?.memo || "",
     progress: project?.progress || 0,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  const [msTitle, setMsTitle] = useState("");
-  const [msDate, setMsDate] = useState("");
 
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [logForm, setLogForm] = useState<LaborFormState>(emptyLaborForm());
@@ -175,6 +173,7 @@ export default function ProjectSheet({
 
   const [dailyDate, setDailyDate] = useState(todayStr());
   const [dailyRows, setDailyRows] = useState<DraftDailyRow[]>([]);
+  const [dailyNoteText, setDailyNoteText] = useState("");
   const [dailySaving, setDailySaving] = useState(false);
   const [dailyError, setDailyError] = useState("");
   const [showManualForm, setShowManualForm] = useState(false);
@@ -183,9 +182,35 @@ export default function ProjectSheet({
     setOpenTypes((prev) => ({ ...prev, [type]: !prev[type] }));
   }
 
+  const [openMonths, setOpenMonths] = useState<Record<string, boolean>>({});
+  function toggleMonth(month: string) {
+    setOpenMonths((prev) => ({ ...prev, [month]: !prev[month] }));
+  }
+
   const [openDates, setOpenDates] = useState<Record<string, boolean>>({});
   function toggleDate(date: string) {
     setOpenDates((prev) => ({ ...prev, [date]: !prev[date] }));
+  }
+
+  const [editingNoteDate, setEditingNoteDate] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+
+  function startEditNote(date: string, current: string) {
+    setEditingNoteDate(date);
+    setNoteDraft(current);
+  }
+
+  async function saveNote() {
+    if (!project || editingNoteDate === null) return;
+    const updated = await api.upsertDailyNote(project.id, editingNoteDate, noteDraft);
+    const exists = project.dailyNotes.some((n) => n.date === editingNoteDate);
+    onProjectUpdated({
+      ...project,
+      dailyNotes: exists
+        ? project.dailyNotes.map((n) => (n.date === editingNoteDate ? updated : n))
+        : [...project.dailyNotes, updated],
+    });
+    setEditingNoteDate(null);
   }
 
   const draftPseudoProject: Project | null = project
@@ -208,7 +233,6 @@ export default function ProjectSheet({
         endDate: form.endDate,
         contractAmount: Number(form.contractAmount) || 0,
         progress: Number(form.progress) || 0,
-        memo: form.memo.trim(),
       };
       if (isEdit && project) {
         const updated = await api.updateProject(project.id, data);
@@ -235,32 +259,6 @@ export default function ProjectSheet({
     } catch (e: any) {
       setError(e.message || "삭제 중 오류가 발생했어요.");
     }
-  }
-
-  async function handleAddMilestone() {
-    if (!project || !msTitle.trim()) return;
-    const updated = await api.addMilestone(project.id, msTitle.trim(), msDate);
-    onProjectUpdated({ ...project, milestones: [...project.milestones, updated] });
-    setMsTitle("");
-    setMsDate("");
-  }
-
-  async function handleToggleMilestone(msId: string, done: boolean) {
-    if (!project) return;
-    await api.toggleMilestone(project.id, msId, done);
-    onProjectUpdated({
-      ...project,
-      milestones: project.milestones.map((m) => (m.id === msId ? { ...m, done } : m)),
-    });
-  }
-
-  async function handleDeleteMilestone(msId: string) {
-    if (!project) return;
-    await api.deleteMilestone(project.id, msId);
-    onProjectUpdated({
-      ...project,
-      milestones: project.milestones.filter((m) => m.id !== msId),
-    });
   }
 
   function onLgTypeChange(type: string) {
@@ -446,21 +444,36 @@ export default function ProjectSheet({
   }
 
   async function commitDaily() {
-    if (!project || dailyRows.length === 0) return;
+    if (!project) return;
     const valid = dailyRows.filter((r) => r.name.trim() && (r.qty > 0 || r.amount > 0));
-    if (valid.length === 0) {
-      setDailyError("이름과 공수(또는 금액)를 입력해주세요.");
+    if (valid.length === 0 && !dailyNoteText.trim()) {
+      setDailyError("이름과 공수(또는 금액)를 입력하거나, 작업내용을 적어주세요.");
       return;
     }
     setDailyError("");
     setDailySaving(true);
     try {
-      const created = await api.bulkAddLaborLogs(
-        project.id,
-        valid.map(({ _key, ...r }) => ({ ...r, date: dailyDate, note: "" }))
-      );
-      onProjectUpdated({ ...project, laborLogs: [...project.laborLogs, ...created] });
+      let nextProject = project;
+      if (valid.length > 0) {
+        const created = await api.bulkAddLaborLogs(
+          project.id,
+          valid.map(({ _key, ...r }) => ({ ...r, date: dailyDate, note: "" }))
+        );
+        nextProject = { ...nextProject, laborLogs: [...nextProject.laborLogs, ...created] };
+      }
+      if (dailyNoteText.trim()) {
+        const note = await api.upsertDailyNote(project.id, dailyDate, dailyNoteText.trim());
+        const exists = nextProject.dailyNotes.some((n) => n.date === dailyDate);
+        nextProject = {
+          ...nextProject,
+          dailyNotes: exists
+            ? nextProject.dailyNotes.map((n) => (n.date === dailyDate ? note : n))
+            : [...nextProject.dailyNotes, note],
+        };
+      }
+      onProjectUpdated(nextProject);
       setDailyRows([]);
+      setDailyNoteText("");
     } catch (e: any) {
       setDailyError(e.message || "저장 중 오류가 발생했어요.");
     } finally {
@@ -484,8 +497,6 @@ export default function ProjectSheet({
     .reduce((s, l) => s + (Number(l.qty) || 0), 0);
   const totalCost = (project?.laborLogs || []).reduce((s, l) => s + (Number(l.amount) || 0), 0);
 
-  const sortedMilestones = project ? project.milestones : [];
-
   const groupedLogs = TYPES_ORDER.map((type) => {
     const logs = (project?.laborLogs || [])
       .filter((l) => l.type === type)
@@ -495,19 +506,31 @@ export default function ProjectSheet({
     return { type, logs, qty, amount };
   }).filter((g) => g.logs.length > 0);
 
-  const groupedByDate = Object.values(
-    (project?.laborLogs || []).reduce<Record<string, { date: string; logs: LaborLog[] }>>((acc, l) => {
-      const d = l.date || "날짜 미상";
-      if (!acc[d]) acc[d] = { date: d, logs: [] };
-      acc[d].logs.push(l);
-      return acc;
-    }, {})
-  )
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .map((d) => ({
-      ...d,
-      amount: d.logs.reduce((s, l) => s + (Number(l.amount) || 0), 0),
-    }));
+  const allDates = new Set<string>();
+  (project?.laborLogs || []).forEach((l) => allDates.add(l.date || "날짜 미상"));
+  (project?.dailyNotes || []).forEach((n) => allDates.add(n.date));
+
+  const groupedByDate = Array.from(allDates)
+    .map((date) => {
+      const logs = (project?.laborLogs || []).filter((l) => (l.date || "날짜 미상") === date);
+      const note = project?.dailyNotes.find((n) => n.date === date)?.content || "";
+      const amount = logs.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+      return { date, logs, amount, note };
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const groupedByMonth = Object.values(
+    groupedByDate.reduce<Record<string, { month: string; dates: typeof groupedByDate; amount: number }>>(
+      (acc, d) => {
+        const m = d.date.slice(0, 7) || "날짜 미상";
+        if (!acc[m]) acc[m] = { month: m, dates: [], amount: 0 };
+        acc[m].dates.push(d);
+        acc[m].amount += d.amount;
+        return acc;
+      },
+      {}
+    )
+  ).sort((a, b) => b.month.localeCompare(a.month));
 
   return (
     <div className="overlay open" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -517,16 +540,6 @@ export default function ProjectSheet({
 
         {error && <div className="login-error">{error}</div>}
 
-        <div className="field">
-          <label>회사</label>
-          <select value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })}>
-            {COMPANIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
         <div className="field">
           <label>공사명</label>
           <input
@@ -607,58 +620,8 @@ export default function ProjectSheet({
             </>
           )}
         </div>
-        <div className="field">
-          <label>메모</label>
-          <textarea
-            placeholder="특이사항, 협력업체, 자재 관련 메모"
-            value={form.memo}
-            onChange={(e) => setForm({ ...form, memo: e.target.value })}
-          />
-        </div>
-
         {isEdit && project && (
           <>
-            <div className="ms-title">세부 일정 (마일스톤)</div>
-            <div>
-              {sortedMilestones.length === 0 && (
-                <div style={{ fontSize: 12, color: "#a09a89", padding: "6px 0" }}>
-                  등록된 일정이 없어요.
-                </div>
-              )}
-              {sortedMilestones.map((m) => (
-                <div className="ms-item" key={m.id}>
-                  <div
-                    className={`ms-check ${m.done ? "done" : ""}`}
-                    onClick={() => handleToggleMilestone(m.id, !m.done)}
-                  >
-                    {m.done ? "✓" : ""}
-                  </div>
-                  <div className="ms-body">
-                    <div className={`ms-name ${m.done ? "done" : ""}`}>{m.title}</div>
-                    <div className="ms-date">{fmtDate(m.date)}</div>
-                  </div>
-                  <div className="ms-del" onClick={() => handleDeleteMilestone(m.id)}>
-                    ✕
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="ms-add">
-              <input
-                type="text"
-                placeholder="일정 이름 (예: 식재공사 착수)"
-                value={msTitle}
-                onChange={(e) => setMsTitle(e.target.value)}
-              />
-              <input
-                type="date"
-                style={{ maxWidth: 130 }}
-                value={msDate}
-                onChange={(e) => setMsDate(e.target.value)}
-              />
-              <button onClick={handleAddMilestone}>추가</button>
-            </div>
-
             <div className="ms-title">착공내역서 · 공종별 진행률</div>
             <div className="wi-box">
               {boqPreview ? (
@@ -846,6 +809,13 @@ export default function ProjectSheet({
                 />
               </div>
 
+              <textarea
+                placeholder="오늘 작업내용 (예: 진남초 뿌리정리 엣지 재설치)"
+                value={dailyNoteText}
+                onChange={(e) => setDailyNoteText(e.target.value)}
+                style={{ minHeight: 50, marginTop: 8, fontSize: 12 }}
+              />
+
               {["인력", "장비"].map((type) => {
                 const rows = dailyRows.filter((r) => r.type === type);
                 const color = type === "인력" ? "var(--blueprint-light)" : "var(--hyesong)";
@@ -1029,58 +999,123 @@ export default function ProjectSheet({
               </button>
             </div>
 
-            <div className="ms-title">작업일보 (날짜별)</div>
+            <div className="ms-title">작업일보 (월별 폴더)</div>
             <div style={{ marginBottom: 14 }}>
-              {groupedByDate.length === 0 && (
+              {groupedByMonth.length === 0 && (
                 <div style={{ fontSize: 12, color: "#a09a89", padding: "6px 0" }}>
                   등록된 일보가 없어요.
                 </div>
               )}
-              {groupedByDate.map((d) => {
-                const isOpen = !!openDates[d.date];
-                const byType = TYPES_ORDER.map((type) => ({
-                  type,
-                  logs: d.logs.filter((l) => l.type === type),
-                })).filter((g) => g.logs.length > 0);
+              {groupedByMonth.map((mo) => {
+                const monthOpen = !!openMonths[mo.month];
                 return (
-                  <div className="lg-group" key={d.date}>
-                    <div className="lg-group-header" onClick={() => toggleDate(d.date)}>
+                  <div className="lg-group" key={mo.month}>
+                    <div className="lg-group-header" onClick={() => toggleMonth(mo.month)}>
+                      <span style={{ fontSize: 15 }}>{monthOpen ? "📂" : "📁"}</span>
                       <div className="lg-group-meta" style={{ flex: "none", fontWeight: 700, color: "var(--ink)" }}>
-                        {fmtDate(d.date)}
+                        {mo.month}
                       </div>
                       <div className="lg-group-meta">
-                        {d.logs.length}건 · {formatWon(d.amount)}원
+                        {mo.dates.length}일 · {formatWon(mo.amount)}원
                       </div>
-                      <div className={`chevron ${isOpen ? "open" : ""}`}>▸</div>
+                      <div className={`chevron ${monthOpen ? "open" : ""}`}>▸</div>
                     </div>
-                    {isOpen && (
+                    {monthOpen && (
                       <div className="lg-group-body">
-                        {byType.map((g) => (
-                          <div key={g.type} style={{ padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-                            <div
-                              className={`lg-type ${TYPE_CLASS[g.type] || "misc"}`}
-                              style={{ display: "inline-block", marginBottom: 6 }}
-                            >
-                              {g.type}
-                            </div>
-                            {g.logs.map((l) => {
-                              const qtyPart = l.qty ? `${l.qty}${l.unit || ""}` : "";
-                              const ratePart =
-                                l.rate && (l.type === "인력" || l.type === "장비")
-                                  ? `단가 ${formatWon(l.rate)}원`
-                                  : "";
-                              const amountPart = l.amount ? formatWon(l.amount) + "원" : "";
-                              const mid = [qtyPart, ratePart, amountPart].filter(Boolean).join(" · ");
-                              return (
-                                <div key={l.id} style={{ fontSize: 12, padding: "3px 0" }}>
-                                  {l.jobType ? l.jobType + " · " : ""}
-                                  {l.name}
-                                  {mid ? " · " + mid : ""}
+                        {mo.dates.map((d) => {
+                          const isOpen = !!openDates[d.date];
+                          const byType = TYPES_ORDER.map((type) => ({
+                            type,
+                            logs: d.logs.filter((l) => l.type === type),
+                          })).filter((g) => g.logs.length > 0);
+                          return (
+                            <div className="lg-group" key={d.date}>
+                              <div className="lg-group-header" onClick={() => toggleDate(d.date)}>
+                                <div
+                                  className="lg-group-meta"
+                                  style={{ flex: "none", fontWeight: 700, color: "var(--ink)" }}
+                                >
+                                  {fmtDate(d.date)}
                                 </div>
-                              );
-                            })}
-                          </div>
-                        ))}
+                                <div className="lg-group-meta">
+                                  {d.logs.length}건 · {formatWon(d.amount)}원
+                                </div>
+                                <div className={`chevron ${isOpen ? "open" : ""}`}>▸</div>
+                              </div>
+                              {isOpen && (
+                                <div className="lg-group-body">
+                                  <div style={{ padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
+                                    {editingNoteDate === d.date ? (
+                                      <>
+                                        <textarea
+                                          value={noteDraft}
+                                          onChange={(e) => setNoteDraft(e.target.value)}
+                                          style={{ minHeight: 44, fontSize: 12 }}
+                                        />
+                                        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                                          <button
+                                            className="wi-upload-btn"
+                                            style={{ fontSize: 11, padding: "4px 8px" }}
+                                            onClick={saveNote}
+                                          >
+                                            저장
+                                          </button>
+                                          <span
+                                            className="lg-cancel"
+                                            onClick={() => setEditingNoteDate(null)}
+                                          >
+                                            취소
+                                          </span>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <div
+                                        style={{ fontSize: 12, cursor: "pointer" }}
+                                        onClick={() => startEditNote(d.date, d.note)}
+                                      >
+                                        {d.note ? (
+                                          d.note
+                                        ) : (
+                                          <span style={{ color: "#a09a89" }}>작업내용 없음 (탭해서 입력)</span>
+                                        )}{" "}
+                                        <span style={{ color: "var(--blueprint-light)" }}>✎</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {byType.map((g) => (
+                                    <div
+                                      key={g.type}
+                                      style={{ padding: "8px 0", borderBottom: "1px solid var(--line)" }}
+                                    >
+                                      <div
+                                        className={`lg-type ${TYPE_CLASS[g.type] || "misc"}`}
+                                        style={{ display: "inline-block", marginBottom: 6 }}
+                                      >
+                                        {g.type}
+                                      </div>
+                                      {g.logs.map((l) => {
+                                        const qtyPart = l.qty ? `${l.qty}${l.unit || ""}` : "";
+                                        const ratePart =
+                                          l.rate && (l.type === "인력" || l.type === "장비")
+                                            ? `단가 ${formatWon(l.rate)}원`
+                                            : "";
+                                        const amountPart = l.amount ? formatWon(l.amount) + "원" : "";
+                                        const mid = [qtyPart, ratePart, amountPart].filter(Boolean).join(" · ");
+                                        return (
+                                          <div key={l.id} style={{ fontSize: 12, padding: "3px 0" }}>
+                                            {l.jobType ? l.jobType + " · " : ""}
+                                            {l.name}
+                                            {mid ? " · " + mid : ""}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
