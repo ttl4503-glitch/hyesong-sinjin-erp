@@ -1,0 +1,32 @@
+{
+  "name": "hyesong-sinjin-erp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && prisma db push --accept-data-loss --skip-generate && next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@prisma/client": "^5.18.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/node": "^20.14.15",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "prisma": "^5.18.0",
+    "tsx": "^4.16.5"
+  },
+  "allowScripts": {
+    "@prisma/client@5.22.0": true,
+    "@prisma/engines@5.22.0": true,
+    "esbuild@0.28.1": true,
+    "prisma@5.22.0": true
+  }
+}

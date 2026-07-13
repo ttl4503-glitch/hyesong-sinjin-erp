@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id               String   @id @default(cuid())
+  company          String
+  name             String
+  location         String   @default("")
+  startDate        String   @default("")
+  endDate          String   @default("")
+  contractAmount   Float    @default(0)
+  progress         Int      @default(0)
+  memo             String   @default("")
+  workItemsTotal   Float    @default(0)
+  workItemsFileName String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  milestones Milestone[]
+  laborLogs  LaborLog[]
+  workItems  WorkItem[]
+}
+
+model Milestone {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title     String
+  date      String  @default("")
+  done      Boolean @default(false)
+}
+
+model WorkItem {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  spec      String  @default("")
+  unit      String  @default("")
+  qty       Float   @default(0)
+  unitPrice Float   @default(0)
+  amount    Float   @default(0)
+
+  laborLogs LaborLog[]
+}
+
+model LaborLog {
+  id         String    @id @default(cuid())
+  projectId  String
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type       String
+  jobType    String    @default("")
+  name       String
+  qty        Float     @default(0)
+  unit       String    @default("")
+  rate       Float     @default(0)
+  amount     Float     @default(0)
+  date       String    @default("")
+  note       String    @default("")
+  taxInvoice Boolean   @default(false)
+  workItemId String?
+  workItem   WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+}
