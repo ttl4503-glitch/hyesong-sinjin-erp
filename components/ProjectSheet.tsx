@@ -386,6 +386,7 @@ export default function ProjectSheet({
   function startEditLog(l: LaborLog) {
     setEditingLogId(l.id);
     setLogForm(logToForm(l));
+    setShowManualForm(true);
   }
 
   function cancelEditLog() {
