@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         amount,
         date: e.date || "",
         note: String(e.note || "").trim(),
-        taxInvoice: type === "자재" || type === "잡자재" ? Boolean(e.taxInvoice) : false,
+        taxInvoice: type === "자재" || type === "운반비" || type === "잡자재" ? Boolean(e.taxInvoice) : false,
         workItemId: e.workItemId || null,
       };
     })

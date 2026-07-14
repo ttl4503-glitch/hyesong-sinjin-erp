@@ -18,8 +18,13 @@ import {
 import { api } from "@/lib/api";
 import type { ParsedWorkItem } from "@/lib/parseWorkItems";
 import { compressImage } from "@/lib/compressImage";
+import { extractReceiptAmount } from "@/lib/receiptOcr";
 
-const RECEIPT_TYPES = ["자재", "식대", "참", "잡자재"];
+const RECEIPT_TYPES = ["장비", "자재", "식대", "참", "운반비", "잡자재"];
+const TAX_INVOICE_TYPES = ["자재", "운반비", "잡자재"];
+// Types whose amount can be OCR-auto-filled from a receipt photo (equipment
+// cost is already computed from 공수×단가, so it's excluded).
+const OCR_AMOUNT_TYPES = ["자재", "식대", "참", "운반비", "잡자재"];
 
 interface DraftWorkItem extends ParsedWorkItem {
   _key: string;
@@ -36,6 +41,7 @@ interface DraftDailyRow {
   amount: number;
   workItemId: string;
   taxInvoice: boolean;
+  pendingReceipt?: string;
 }
 
 function emptyDailyRow(type: string): DraftDailyRow {
@@ -65,10 +71,11 @@ const TYPE_CLASS: Record<string, string> = {
   자재: "material",
   식대: "meal",
   참: "snack",
+  운반비: "freight",
   잡자재: "misc",
 };
 
-const TYPES_ORDER = ["인력", "장비", "자재", "식대", "참", "잡자재"];
+const TYPES_ORDER = ["인력", "장비", "자재", "식대", "참", "운반비", "잡자재"];
 
 const DEFAULT_UNIT: Record<string, string> = {
   인력: "공수",
@@ -76,6 +83,7 @@ const DEFAULT_UNIT: Record<string, string> = {
   자재: "개",
   식대: "건",
   참: "건",
+  운반비: "건",
   잡자재: "건",
 };
 
@@ -85,6 +93,7 @@ const NAME_PLACEHOLDER: Record<string, string> = {
   자재: "자재명 (예: 마사토)",
   식대: "항목 (예: 점심식사)",
   참: "항목 (예: 오후참)",
+  운반비: "항목 (예: 자재 운반비)",
   잡자재: "항목 (예: 소모품)",
 };
 
@@ -182,6 +191,9 @@ export default function ProjectSheet({
   const [dailyNoteText, setDailyNoteText] = useState("");
   const [dailySaving, setDailySaving] = useState(false);
   const [dailyError, setDailyError] = useState("");
+  const [dailyOcrBusyKey, setDailyOcrBusyKey] = useState<string | null>(null);
+  const [pendingDailyRowKey, setPendingDailyRowKey] = useState<string | null>(null);
+  const dailyReceiptInputRef = useRef<HTMLInputElement>(null);
   const [showManualForm, setShowManualForm] = useState(false);
 
   function toggleGroup(type: string) {
@@ -197,6 +209,8 @@ export default function ProjectSheet({
   function toggleDate(date: string) {
     setOpenDates((prev) => ({ ...prev, [date]: !prev[date] }));
   }
+
+  const [backupYear, setBackupYear] = useState(todayStr().slice(0, 4));
 
   const [editingNoteDate, setEditingNoteDate] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
@@ -500,6 +514,37 @@ export default function ProjectSheet({
     setDailyRows((prev) => prev.filter((r) => r._key !== key));
   }
 
+  function triggerDailyReceipt(key: string) {
+    setPendingDailyRowKey(key);
+    dailyReceiptInputRef.current?.click();
+  }
+
+  async function handleDailyReceiptFile(file: File) {
+    const key = pendingDailyRowKey;
+    const row = dailyRows.find((r) => r._key === key);
+    if (!key || !row) return;
+    setDailyOcrBusyKey(key);
+    try {
+      const dataUrl = await compressImage(file);
+      const amount = OCR_AMOUNT_TYPES.includes(row.type)
+        ? await extractReceiptAmount(file).catch(() => null)
+        : null;
+      setDailyRows((prev) =>
+        prev.map((r) => {
+          if (r._key !== key) return r;
+          const next = { ...r, pendingReceipt: dataUrl };
+          if (amount) next.amount = amount;
+          return next;
+        })
+      );
+    } catch (e: any) {
+      alert(e.message || "영수증 처리 중 오류가 발생했어요.");
+    } finally {
+      setDailyOcrBusyKey(null);
+      setPendingDailyRowKey(null);
+    }
+  }
+
   async function commitDaily() {
     if (!project) return;
     const valid = dailyRows.filter((r) => r.name.trim() && (r.qty > 0 || r.amount > 0));
@@ -514,9 +559,17 @@ export default function ProjectSheet({
       if (valid.length > 0) {
         const created = await api.bulkAddLaborLogs(
           project.id,
-          valid.map(({ _key, ...r }) => ({ ...r, date: dailyDate, note: "" }))
+          valid.map(({ _key, pendingReceipt, ...r }) => ({ ...r, date: dailyDate, note: "" }))
         );
-        nextProject = { ...nextProject, laborLogs: [...nextProject.laborLogs, ...created] };
+        const withReceipts: typeof created = await Promise.all(
+          created.map(async (log: LaborLog, i: number) => {
+            const receiptData = valid[i]?.pendingReceipt;
+            if (!receiptData) return log;
+            await api.uploadReceipt(log.id, receiptData);
+            return { ...log, receipt: { id: log.id } };
+          })
+        );
+        nextProject = { ...nextProject, laborLogs: [...nextProject.laborLogs, ...withReceipts] };
       }
       if (dailyNoteText.trim()) {
         const note = await api.upsertDailyNote(project.id, dailyDate, dailyNoteText.trim());
@@ -540,7 +593,7 @@ export default function ProjectSheet({
 
   const isLaborType = logForm.type === "인력" || logForm.type === "장비";
   const isPersonType = logForm.type === "인력";
-  const isMaterialType = logForm.type === "자재" || logForm.type === "잡자재";
+  const isMaterialType = TAX_INVOICE_TYPES.includes(logForm.type);
   const lgTotal = (Number(logForm.qty) || 0) * (Number(logForm.rate) || 0);
 
   const knownNames = getKnownNames(allProjects);
@@ -575,6 +628,15 @@ export default function ProjectSheet({
       return { date, logs, amount, note };
     })
     .sort((a, b) => b.date.localeCompare(a.date));
+
+  const backupYears = Array.from(
+    new Set([
+      todayStr().slice(0, 4),
+      ...Array.from(allDates)
+        .map((d) => d.slice(0, 4))
+        .filter((y) => /^\d{4}$/.test(y)),
+    ])
+  ).sort((a, b) => b.localeCompare(a));
 
   const groupedByMonth = Object.values(
     groupedByDate.reduce<Record<string, { month: string; dates: typeof groupedByDate; amount: number }>>(
@@ -937,6 +999,19 @@ export default function ProjectSheet({
                               ))}
                             </select>
                           )}
+                          {type === "장비" && (
+                            <span
+                              className="wi-upload-btn"
+                              style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+                              onClick={() => triggerDailyReceipt(r._key)}
+                            >
+                              {dailyOcrBusyKey === r._key
+                                ? "처리 중..."
+                                : r.pendingReceipt
+                                ? "🧾 세금계산서 첨부됨"
+                                : "🧾 세금계산서 찍기"}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -949,10 +1024,10 @@ export default function ProjectSheet({
 
               <div style={{ marginTop: 10 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--sinjin)", marginBottom: 6 }}>
-                  자재·식대
+                  자재·식대·운반비
                 </div>
                 {dailyRows
-                  .filter((r) => r.type === "자재" || r.type === "식대" || r.type === "참" || r.type === "잡자재")
+                  .filter((r) => OCR_AMOUNT_TYPES.includes(r.type))
                   .map((r) => (
                     <div className="wi-edit-row" key={r._key}>
                       <div className="wi-edit-row-top">
@@ -964,6 +1039,7 @@ export default function ProjectSheet({
                           <option value="자재">자재대</option>
                           <option value="식대">식대</option>
                           <option value="참">참</option>
+                          <option value="운반비">운반비</option>
                           <option value="잡자재">잡자재비</option>
                         </select>
                         <input
@@ -1010,7 +1086,7 @@ export default function ProjectSheet({
                             ))}
                           </select>
                         )}
-                        {(r.type === "자재" || r.type === "잡자재") && (
+                        {TAX_INVOICE_TYPES.includes(r.type) && (
                           <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
                             <input
                               type="checkbox"
@@ -1020,11 +1096,22 @@ export default function ProjectSheet({
                             계산서
                           </label>
                         )}
+                        <span
+                          className="wi-upload-btn"
+                          style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+                          onClick={() => triggerDailyReceipt(r._key)}
+                        >
+                          {dailyOcrBusyKey === r._key
+                            ? "인식 중..."
+                            : r.pendingReceipt
+                            ? "📷 사진 첨부됨"
+                            : "📷 영수증 찍기"}
+                        </span>
                       </div>
                     </div>
                   ))}
                 <button className="wi-upload-btn" onClick={() => addDailyRow("자재")}>
-                  + 자재/식대 추가
+                  + 자재/식대/운반비 추가
                 </button>
               </div>
 
@@ -1057,7 +1144,34 @@ export default function ProjectSheet({
               </button>
             </div>
 
-            <div className="ms-title">작업일보 (월별 폴더)</div>
+            <div
+              className="ms-title"
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}
+            >
+              작업일보 (월별 폴더)
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <select
+                  value={backupYear}
+                  onChange={(e) => setBackupYear(e.target.value)}
+                  style={{ fontSize: 11, padding: "2px 4px" }}
+                >
+                  {backupYears.map((y) => (
+                    <option key={y} value={y}>
+                      {y}년
+                    </option>
+                  ))}
+                </select>
+                <a
+                  href={`/print/${project.id}/yearly/${backupYear}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="wi-upload-btn"
+                  style={{ fontSize: 11, textDecoration: "none", fontWeight: 400 }}
+                >
+                  📎 증빙 백데이터 인쇄
+                </a>
+              </span>
+            </div>
             <div style={{ marginBottom: 14 }}>
               {groupedByMonth.length === 0 && (
                 <div style={{ fontSize: 12, color: "#a09a89", padding: "6px 0" }}>
@@ -1227,7 +1341,7 @@ export default function ProjectSheet({
                               : "";
                           const amountPart = l.amount ? formatWon(l.amount) + "원" : "";
                           const mid = [qtyPart, ratePart, amountPart].filter(Boolean).join(" · ");
-                          const showTax = (l.type === "자재" || l.type === "잡자재") && l.amount;
+                          const showTax = TAX_INVOICE_TYPES.includes(l.type) && l.amount;
                           const workItem = l.workItemId
                             ? project.workItems.find((w) => w.id === l.workItemId)
                             : null;
@@ -1314,6 +1428,7 @@ export default function ProjectSheet({
                 <option value="자재">자재대(반입)</option>
                 <option value="식대">식대</option>
                 <option value="참">참</option>
+                <option value="운반비">운반비</option>
                 <option value="잡자재">잡자재비</option>
               </select>
               {project.workItems.length > 0 ? (
@@ -1440,6 +1555,19 @@ export default function ProjectSheet({
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) handleReceiptFile(file);
+          e.target.value = "";
+        }}
+      />
+
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        ref={dailyReceiptInputRef}
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleDailyReceiptFile(file);
           e.target.value = "";
         }}
       />

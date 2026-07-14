@@ -4,6 +4,13 @@ export interface ReportRow extends LaborLog {
   cumulative: number;
 }
 
+export interface ReceiptDoc {
+  logId: string;
+  type: string;
+  name: string;
+  amount: number;
+}
+
 export interface DailyReportDoc {
   date: string;
   company: string;
@@ -17,6 +24,8 @@ export interface DailyReportDoc {
   cumEquip: number;
   cumMaterial: number;
   cumMeal: number;
+  cumSnack: number;
+  cumFreight: number;
   cumMisc: number;
   cumTotal: number;
   todayTotal: number;
@@ -24,6 +33,7 @@ export interface DailyReportDoc {
   equipRows: ReportRow[];
   materialRows: ReportRow[];
   mealRows: ReportRow[];
+  receipts: ReceiptDoc[];
 }
 
 // Builds the data for one day's 현장운영일보 (site operation daily report),
@@ -42,8 +52,10 @@ export function buildDailyReportDoc(project: Project, date: string): DailyReport
   const cumEquip = sumType("장비", upToDate);
   const cumMaterial = sumType("자재", upToDate);
   const cumMeal = sumType("식대", upToDate);
+  const cumSnack = sumType("참", upToDate);
+  const cumFreight = sumType("운반비", upToDate);
   const cumMisc = sumType("잡자재", upToDate);
-  const cumTotal = cumLabor + cumEquip + cumMaterial + cumMeal + cumMisc;
+  const cumTotal = cumLabor + cumEquip + cumMaterial + cumMeal + cumSnack + cumFreight + cumMisc;
 
   const todayLogs = allLogs.filter(onDate);
   const todayTotal = todayLogs.reduce((s, l) => s + (Number(l.amount) || 0), 0);
@@ -62,6 +74,10 @@ export function buildDailyReportDoc(project: Project, date: string): DailyReport
   const progressPct =
     project.contractAmount > 0 ? Math.round((cumTotal / project.contractAmount) * 100) : 0;
 
+  const receipts: ReceiptDoc[] = todayLogs
+    .filter((l) => !!l.receipt)
+    .map((l) => ({ logId: l.id, type: l.type, name: l.name, amount: Number(l.amount) || 0 }));
+
   return {
     date,
     company: project.company,
@@ -75,12 +91,15 @@ export function buildDailyReportDoc(project: Project, date: string): DailyReport
     cumEquip,
     cumMaterial,
     cumMeal,
+    cumSnack,
+    cumFreight,
     cumMisc,
     cumTotal,
     todayTotal,
     laborRows: withCumulative("인력"),
     equipRows: withCumulative("장비"),
-    materialRows: [...withCumulative("자재"), ...withCumulative("잡자재")],
-    mealRows: withCumulative("식대"),
+    materialRows: [...withCumulative("자재"), ...withCumulative("운반비"), ...withCumulative("잡자재")],
+    mealRows: [...withCumulative("식대"), ...withCumulative("참")],
+    receipts,
   };
 }

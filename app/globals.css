@@ -217,6 +217,7 @@ html, body{
 .lg-type.material{background:var(--sinjin); color:#fff;}
 .lg-type.meal{background:#a67c3d; color:#fff;}
 .lg-type.snack{background:#c98a3d; color:#fff;}
+.lg-type.freight{background:#4d7d8c; color:#fff;}
 .lg-type.misc{background:#7d7360; color:#fff;}
 .tax-badge{
   font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:4px; display:inline-block;

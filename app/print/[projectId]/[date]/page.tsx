@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Project, formatWon, fmtDate } from "@/lib/erp";
 import { buildDailyReportDoc } from "@/lib/dailyReportDoc";
+import { api } from "@/lib/api";
 
 export default function PrintDailyReportPage() {
   const params = useParams<{ projectId: string; date: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [receiptImages, setReceiptImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch("/api/projects")
@@ -19,11 +21,27 @@ export default function PrintDailyReportPage() {
       .finally(() => setLoading(false));
   }, [params.projectId]);
 
-  if (loading) return <div style={{ padding: 40 }}>불러오는 중...</div>;
-  if (!project) return <div style={{ padding: 40 }}>공사를 찾을 수 없어요.</div>;
-
   const date = decodeURIComponent(params.date);
-  const doc = buildDailyReportDoc(project, date);
+  const doc = project ? buildDailyReportDoc(project, date) : null;
+  const receiptIds = doc ? doc.receipts.map((r) => r.logId).join(",") : "";
+
+  useEffect(() => {
+    if (!receiptIds) return;
+    const ids = receiptIds.split(",");
+    Promise.all(
+      ids.map((id) =>
+        api
+          .getReceipt(id)
+          .then(({ imageData }) => [id, imageData] as const)
+          .catch(() => [id, ""] as const)
+      )
+    ).then((pairs) => {
+      setReceiptImages(Object.fromEntries(pairs.filter(([, v]) => v)));
+    });
+  }, [receiptIds]);
+
+  if (loading) return <div style={{ padding: 40 }}>불러오는 중...</div>;
+  if (!project || !doc) return <div style={{ padding: 40 }}>공사를 찾을 수 없어요.</div>;
 
   return (
     <div className="print-page">
@@ -53,6 +71,10 @@ export default function PrintDailyReportPage() {
           display: flex; justify-content: space-between; padding: 10px 14px; margin-top: 16px;
           background: #1b3a4b; color: #fff; font-weight: 700; border-radius: 6px;
         }
+        .receipt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+        .receipt-card { border: 1px solid #999; border-radius: 4px; padding: 6px; break-inside: avoid; }
+        .receipt-card img { width: 100%; display: block; border-radius: 2px; }
+        .receipt-caption { font-size: 11px; text-align: center; margin-bottom: 6px; font-weight: 700; }
         @media print {
           body { background: #fff; }
           .print-toolbar { display: none; }
@@ -169,7 +191,7 @@ export default function PrintDailyReportPage() {
         </table>
       )}
 
-      <div className="section-title">자 재 · 식 대 투 입</div>
+      <div className="section-title">자 재 · 식 대 · 운 반 비 투 입</div>
       {doc.materialRows.length === 0 && doc.mealRows.length === 0 ? (
         <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>금일 투입 내역 없음</div>
       ) : (
@@ -205,6 +227,30 @@ export default function PrintDailyReportPage() {
         <span>누적 총 투입비</span>
         <b>{formatWon(doc.cumTotal)}원</b>
       </div>
+
+      {doc.receipts.length > 0 && (
+        <>
+          <div className="section-title" style={{ pageBreakBefore: "always", paddingTop: 20 }}>
+            첨 부 : 영 수 증 · 세 금 계 산 서 (백데이터)
+          </div>
+          <div className="receipt-grid">
+            {doc.receipts.map((r) => (
+              <div className="receipt-card" key={r.logId}>
+                <div className="receipt-caption">
+                  {r.type} · {r.name} · {formatWon(r.amount)}원
+                </div>
+                {receiptImages[r.logId] ? (
+                  <img src={receiptImages[r.logId]} alt={r.name} />
+                ) : (
+                  <div style={{ fontSize: 11, color: "#888", padding: 20, textAlign: "center" }}>
+                    불러오는 중...
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

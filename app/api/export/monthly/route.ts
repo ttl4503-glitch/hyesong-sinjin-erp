@@ -11,6 +11,7 @@ interface Row {
   materialCost: number;
   mealCost: number;
   snackCost: number;
+  freightCost: number;
   miscCost: number;
 }
 
@@ -24,12 +25,13 @@ function emptyRow(name: string): Row {
     materialCost: 0,
     mealCost: 0,
     snackCost: 0,
+    freightCost: 0,
     miscCost: 0,
   };
 }
 
 function rowTotal(r: Row) {
-  return r.pCost + r.eCost + r.materialCost + r.mealCost + r.snackCost + r.miscCost;
+  return r.pCost + r.eCost + r.materialCost + r.mealCost + r.snackCost + r.freightCost + r.miscCost;
 }
 
 export async function GET(req: NextRequest) {
@@ -61,6 +63,8 @@ export async function GET(req: NextRequest) {
         row.mealCost += l.amount;
       } else if (l.type === "참") {
         row.snackCost += l.amount;
+      } else if (l.type === "운반비") {
+        row.freightCost += l.amount;
       } else if (l.type === "잡자재") {
         row.miscCost += l.amount;
       }
@@ -79,6 +83,7 @@ export async function GET(req: NextRequest) {
     "자재대(원)",
     "식대(원)",
     "참(원)",
+    "운반비(원)",
     "잡자재비(원)",
     "합계 비용(원)",
   ]);
@@ -99,6 +104,7 @@ export async function GET(req: NextRequest) {
         r.materialCost,
         r.mealCost,
         r.snackCost,
+        r.freightCost,
         r.miscCost,
         rowTotal(r),
       ]);
@@ -109,6 +115,7 @@ export async function GET(req: NextRequest) {
       sub.materialCost += r.materialCost;
       sub.mealCost += r.mealCost;
       sub.snackCost += r.snackCost;
+      sub.freightCost += r.freightCost;
       sub.miscCost += r.miscCost;
     });
     rows.push([
@@ -121,6 +128,7 @@ export async function GET(req: NextRequest) {
       sub.materialCost,
       sub.mealCost,
       sub.snackCost,
+      sub.freightCost,
       sub.miscCost,
       rowTotal(sub),
     ]);
@@ -132,6 +140,7 @@ export async function GET(req: NextRequest) {
     grand.materialCost += sub.materialCost;
     grand.mealCost += sub.mealCost;
     grand.snackCost += sub.snackCost;
+    grand.freightCost += sub.freightCost;
     grand.miscCost += sub.miscCost;
   });
 
@@ -145,6 +154,7 @@ export async function GET(req: NextRequest) {
     grand.materialCost,
     grand.mealCost,
     grand.snackCost,
+    grand.freightCost,
     grand.miscCost,
     rowTotal(grand),
   ]);
@@ -156,6 +166,7 @@ export async function GET(req: NextRequest) {
     { wch: 10 },
     { wch: 14 },
     { wch: 10 },
+    { wch: 14 },
     { wch: 14 },
     { wch: 14 },
     { wch: 14 },
