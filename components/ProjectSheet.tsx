@@ -827,22 +827,39 @@ export default function ProjectSheet({
                             onChange={(e) => updatePreviewItem(it._key, "unit", e.target.value)}
                           />
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="수량"
-                            value={it.qty || ""}
-                            onChange={(e) => updatePreviewItem(it._key, "qty", e.target.value)}
+                            value={it.qty ? Number(it.qty).toLocaleString("ko-KR", { maximumFractionDigits: 3 }) : ""}
+                            onChange={(e) =>
+                              updatePreviewItem(it._key, "qty", e.target.value.replace(/[^0-9.]/g, ""))
+                            }
                           />
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="단가"
-                            value={it.unitPrice || ""}
-                            onChange={(e) => updatePreviewItem(it._key, "unitPrice", e.target.value)}
+                            value={
+                              it.unitPrice
+                                ? Number(it.unitPrice).toLocaleString("ko-KR", { maximumFractionDigits: 3 })
+                                : ""
+                            }
+                            onChange={(e) =>
+                              updatePreviewItem(it._key, "unitPrice", e.target.value.replace(/[^0-9.]/g, ""))
+                            }
                           />
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="금액"
-                            value={it.amount || ""}
-                            onChange={(e) => updatePreviewItem(it._key, "amount", e.target.value)}
+                            value={
+                              it.amount
+                                ? Number(it.amount).toLocaleString("ko-KR", { maximumFractionDigits: 3 })
+                                : ""
+                            }
+                            onChange={(e) =>
+                              updatePreviewItem(it._key, "amount", e.target.value.replace(/[^0-9.]/g, ""))
+                            }
                           />
                         </div>
                       </div>
