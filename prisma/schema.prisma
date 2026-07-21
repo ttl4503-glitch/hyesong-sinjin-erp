@@ -85,6 +85,7 @@ model LaborLog {
   amount     Float     @default(0)
   date       String    @default("")
   note       String    @default("")
+  vendor     String    @default("") // 업체명 (자재/식대/운반비 등)
   taxInvoice Boolean   @default(false)
   workItemId String?
   workItem   WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)

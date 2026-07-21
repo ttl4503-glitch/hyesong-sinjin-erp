@@ -37,6 +37,7 @@ export interface LaborLog {
   amount: number;
   date: string;
   note: string;
+  vendor: string;
   taxInvoice: boolean;
   workItemId: string | null;
   receipt?: { id: string } | null;

@@ -11,6 +11,7 @@ interface BulkEntry {
   amount?: number;
   date?: string;
   note?: string;
+  vendor?: string;
   taxInvoice?: boolean;
   workItemId?: string | null;
 }
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         amount,
         date: e.date || "",
         note: String(e.note || "").trim(),
+        vendor: String(e.vendor || "").trim(),
         taxInvoice: type === "자재" || type === "운반비" || type === "잡자재" ? Boolean(e.taxInvoice) : false,
         workItemId: e.workItemId || null,
       };

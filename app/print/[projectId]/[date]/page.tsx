@@ -200,6 +200,7 @@ export default function PrintDailyReportPage() {
             <tr>
               <th>구분</th>
               <th>품목</th>
+              <th>업체명</th>
               <th>단위</th>
               <th>금액</th>
               <th>누계금액</th>
@@ -210,6 +211,7 @@ export default function PrintDailyReportPage() {
               <tr key={r.id}>
                 <td>{r.type}</td>
                 <td>{r.name}</td>
+                <td>{r.vendor}</td>
                 <td>{r.unit}</td>
                 <td className="num">{formatWon(r.amount)}</td>
                 <td className="num">{formatWon(r.cumulative)}</td>

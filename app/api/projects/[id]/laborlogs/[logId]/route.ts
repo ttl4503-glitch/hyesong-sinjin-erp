@@ -24,6 +24,7 @@ export async function PATCH(
       amount,
       date: body.date || "",
       note: String(body.note || "").trim(),
+      vendor: String(body.vendor || "").trim(),
       taxInvoice: (type === "자재" || type === "운반비" || type === "잡자재") ? Boolean(body.taxInvoice) : false,
       workItemId: body.workItemId || null,
     },

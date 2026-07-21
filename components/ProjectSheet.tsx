@@ -22,6 +22,7 @@ import { extractReceiptAmount } from "@/lib/receiptOcr";
 
 const RECEIPT_TYPES = ["장비", "자재", "식대", "참", "운반비", "잡자재"];
 const TAX_INVOICE_TYPES = ["자재", "운반비", "잡자재"];
+const VENDOR_TYPES = ["자재", "식대", "운반비"];
 // Types whose amount can be OCR-auto-filled from a receipt photo (equipment
 // cost is already computed from 공수×단가, so it's excluded).
 const OCR_AMOUNT_TYPES = ["자재", "식대", "참", "운반비", "잡자재"];
@@ -41,6 +42,7 @@ interface DraftDailyRow {
   amount: number;
   workItemId: string;
   taxInvoice: boolean;
+  vendor: string;
   pendingReceipt?: string;
 }
 
@@ -56,6 +58,7 @@ function emptyDailyRow(type: string): DraftDailyRow {
     amount: 0,
     workItemId: "",
     taxInvoice: false,
+    vendor: "",
   };
 }
 
@@ -108,6 +111,7 @@ interface LaborFormState {
   date: string;
   note: string;
   taxInvoice: boolean;
+  vendor: string;
   workItemId: string;
 }
 
@@ -123,6 +127,7 @@ function emptyLaborForm(): LaborFormState {
     date: todayStr(),
     note: "",
     taxInvoice: false,
+    vendor: "",
     workItemId: "",
   };
 }
@@ -139,6 +144,7 @@ function logToForm(l: LaborLog): LaborFormState {
     date: l.date || todayStr(),
     note: l.note || "",
     taxInvoice: !!l.taxInvoice,
+    vendor: l.vendor || "",
     workItemId: l.workItemId || "",
   };
 }
@@ -379,6 +385,7 @@ export default function ProjectSheet({
       amount,
       date: logForm.date || todayStr(),
       note: logForm.note,
+      vendor: logForm.vendor,
       taxInvoice: logForm.taxInvoice,
       workItemId: logForm.workItemId || null,
     };
@@ -1095,6 +1102,14 @@ export default function ProjectSheet({
                           value={r.amount || ""}
                           onChange={(e) => updateDailyRow(r._key, "amount", e.target.value)}
                         />
+                        {VENDOR_TYPES.includes(r.type) && (
+                          <input
+                            type="text"
+                            placeholder="업체명"
+                            value={r.vendor}
+                            onChange={(e) => updateDailyRow(r._key, "vendor", e.target.value)}
+                          />
+                        )}
                         {project.workItems.length > 0 && (
                           <select
                             value={r.workItemId}
@@ -1315,6 +1330,7 @@ export default function ProjectSheet({
                                             {l.jobType ? l.jobType + " · " : ""}
                                             {l.name}
                                             {mid ? " · " + mid : ""}
+                                            {l.vendor ? " · " + l.vendor : ""}
                                           </div>
                                         );
                                       })}
@@ -1388,6 +1404,7 @@ export default function ProjectSheet({
                                 </div>
                                 <div className="lg-sub" style={{ textAlign: "left", margin: 0 }}>
                                   {fmtDate(l.date)}
+                                  {l.vendor ? " · " + l.vendor : ""}
                                   {l.note ? " · " + l.note : ""}
                                 </div>
                               </div>
@@ -1532,6 +1549,14 @@ export default function ProjectSheet({
                 value={logForm.note}
                 onChange={(e) => setLogForm({ ...logForm, note: e.target.value })}
               />
+              {VENDOR_TYPES.includes(logForm.type) && (
+                <input
+                  type="text"
+                  placeholder="업체명"
+                  value={logForm.vendor}
+                  onChange={(e) => setLogForm({ ...logForm, vendor: e.target.value })}
+                />
+              )}
               {isMaterialType && (
                 <div className="lg-tax-row">
                   <input
