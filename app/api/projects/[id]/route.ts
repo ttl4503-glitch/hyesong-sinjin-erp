@@ -12,6 +12,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (body.contractAmount !== undefined) data.contractAmount = Number(body.contractAmount) || 0;
   if (body.progress !== undefined) data.progress = Number(body.progress) || 0;
   if (body.memo !== undefined) data.memo = String(body.memo).trim();
+  if (body.completed !== undefined) data.completed = Boolean(body.completed);
 
   const project = await prisma.project.update({
     where: { id: params.id },

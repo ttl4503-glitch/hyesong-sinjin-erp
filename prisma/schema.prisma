@@ -17,6 +17,7 @@ model Project {
   contractAmount   Float    @default(0)
   progress         Int      @default(0)
   memo             String   @default("")
+  completed        Boolean  @default(false)
   workItemsTotal   Float    @default(0)
   workItemsFileName String?
   createdAt        DateTime @default(now())

@@ -15,6 +15,7 @@ export default function HomePage() {
   const [company, setCompany] = useState(COMPANIES[0]);
   const [sheet, setSheet] = useState<SheetState>(null);
   const [reportMonth, setReportMonth] = useState(todayStr().slice(0, 7));
+  const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
     api
@@ -28,13 +29,27 @@ export default function HomePage() {
     [projects, company]
   );
 
-  const sortedList = useMemo(
-    () =>
-      [...companyProjects].sort((a, b) => (a.endDate || "9999").localeCompare(b.endDate || "9999")),
+  const ongoingProjects = useMemo(
+    () => companyProjects.filter((p) => !p.completed),
+    [companyProjects]
+  );
+  const completedProjects = useMemo(
+    () => companyProjects.filter((p) => p.completed),
     [companyProjects]
   );
 
-  const dashTotal = companyProjects.length;
+  const sortedList = useMemo(
+    () =>
+      [...ongoingProjects].sort((a, b) => (a.endDate || "9999").localeCompare(b.endDate || "9999")),
+    [ongoingProjects]
+  );
+  const sortedCompletedList = useMemo(
+    () =>
+      [...completedProjects].sort((a, b) => (b.endDate || "").localeCompare(a.endDate || "")),
+    [completedProjects]
+  );
+
+  const dashTotal = ongoingProjects.length;
 
   function updateProjectInList(updated: Project) {
     setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -155,6 +170,31 @@ export default function HomePage() {
           ))
         )}
       </div>
+
+      <div
+        className="section-label"
+        style={{ cursor: "pointer" }}
+        onClick={() => setShowCompleted((v) => !v)}
+      >
+        <span>✅ 완료된 공사 {showCompleted ? "▾" : "▸"}</span>
+        <span>{sortedCompletedList.length}건</span>
+      </div>
+
+      {showCompleted && (
+        <div className="list">
+          {sortedCompletedList.length === 0 ? (
+            <div className="empty">완료된 공사가 없어요.</div>
+          ) : (
+            sortedCompletedList.map((p) => (
+              <ProjectCard
+                key={p.id}
+                project={p}
+                onClick={() => setSheet({ mode: "edit", projectId: p.id })}
+              />
+            ))
+          )}
+        </div>
+      )}
 
       <div className="fab">
         <button onClick={() => setSheet({ mode: "add" })}>+ 공사 등록</button>

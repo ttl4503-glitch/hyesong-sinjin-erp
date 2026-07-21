@@ -59,6 +59,7 @@ export interface Project {
   contractAmount: number;
   progress: number;
   memo: string;
+  completed: boolean;
   workItemsTotal: number;
   workItemsFileName: string | null;
   milestones: Milestone[];

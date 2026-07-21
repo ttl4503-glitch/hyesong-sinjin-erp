@@ -337,6 +337,18 @@ export default function ProjectSheet({
     }
   }
 
+  async function handleToggleCompleted(completed: boolean) {
+    if (!project) return;
+    if (!confirm(completed ? "이 공사를 완료 처리할까요?" : "이 공사를 진행중으로 되돌릴까요?")) return;
+    try {
+      const updated = await api.updateProject(project.id, { completed });
+      onProjectUpdated(updated);
+      onClose();
+    } catch (e: any) {
+      setError(e.message || "처리 중 오류가 발생했어요.");
+    }
+  }
+
   function onLgTypeChange(type: string) {
     const isLaborType = type === "인력" || type === "장비";
     setLogForm((f) => ({
@@ -1633,6 +1645,16 @@ export default function ProjectSheet({
         <button className="btn-ghost" onClick={onClose}>
           닫기
         </button>
+        {isEdit && !project?.completed && (
+          <button className="btn-primary" onClick={() => handleToggleCompleted(true)}>
+            ✅ 공사완료
+          </button>
+        )}
+        {isEdit && project?.completed && (
+          <button className="btn-ghost" onClick={() => handleToggleCompleted(false)}>
+            ↩️ 진행중으로 되돌리기
+          </button>
+        )}
       </div>
 
       <input
