@@ -7,10 +7,10 @@ export default function ProjectCard({
   project: Project;
   onClick: () => void;
 }) {
-  const dleft = daysUntil(project.endDate);
+  const dleft = project.completed ? null : daysUntil(project.endDate);
   const progressVal = computeProgress(project);
   const over = progressVal > 100;
-  const late = dleft !== null && dleft < 0 && progressVal < 100;
+  const late = !project.completed && dleft !== null && dleft < 0 && progressVal < 100;
   const tagClass = project.company === "혜송산업개발" ? "hyesong" : "sinjin";
 
   let ddayText = "-";
@@ -40,9 +40,11 @@ export default function ProjectCard({
           <div className="gauge-period">
             {fmtDate(project.startDate)} ~ {fmtDate(project.endDate)}
           </div>
-          <div className={`dday ${late ? "late" : ""}`} style={{ fontWeight: 700 }}>
-            남은 공기 {ddayText}
-          </div>
+          {!project.completed && (
+            <div className={`dday ${late ? "late" : ""}`} style={{ fontWeight: 700 }}>
+              남은 공기 {ddayText}
+            </div>
+          )}
         </div>
         <div className="ruler">
           <div
