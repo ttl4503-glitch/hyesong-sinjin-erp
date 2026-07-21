@@ -7,7 +7,14 @@ export interface ParsedWorkItem {
   qty: number;
   unitPrice: number;
   amount: number;
+  isHeader?: boolean;
 }
+
+// Numbered category-header rows in a 내역서 ("1. 토공", "2) 우수공" etc.) have
+// no quantity/unit/price/amount of their own — they're just section titles
+// for the items below. We keep them (as isHeader rows) purely so the
+// displayed list can show the same section breaks as the source file.
+const HEADER_NAME_PATTERN = /^\d+[.)]\s*\S/;
 
 export interface ParsedWorkbook {
   items: ParsedWorkItem[];
@@ -119,7 +126,13 @@ function extractItems(
     const unitPrice = cols.price >= 0 ? Number(String(row[cols.price]).replace(/,/g, "")) || 0 : 0;
     let amount = cols.amount >= 0 ? Number(String(row[cols.amount]).replace(/,/g, "")) || 0 : 0;
     if (!amount && qty && unitPrice) amount = qty * unitPrice;
-    if (!amount) continue;
+
+    if (!amount) {
+      if (HEADER_NAME_PATTERN.test(rawName) && !qty && !unitPrice && !unit) {
+        items.push({ name: rawName, spec: "", unit: "", qty: 0, unitPrice: 0, amount: 0, isHeader: true });
+      }
+      continue;
+    }
 
     // Hierarchical 내역서 layouts mix category/subtotal rows (no unit, qty=0)
     // in with real line items. When both columns are present, only count

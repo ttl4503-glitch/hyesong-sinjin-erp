@@ -8,6 +8,7 @@ interface CommitItem {
   qty?: number;
   unitPrice?: number;
   amount: number;
+  isHeader?: boolean;
 }
 
 // Saves a (possibly user-edited) BOQ item list that was previously produced
@@ -25,8 +26,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       qty: Number(it.qty) || 0,
       unitPrice: Number(it.unitPrice) || 0,
       amount: Number(it.amount) || 0,
+      isHeader: Boolean(it.isHeader),
     }))
-    .filter((it) => it.name && it.amount > 0);
+    .filter((it) => it.name && (it.amount > 0 || it.isHeader));
 
   if (cleaned.length === 0) {
     return NextResponse.json({ error: "저장할 공종 항목이 없어요." }, { status: 400 });

@@ -486,6 +486,7 @@ export default function ProjectSheet({
         qty: w.qty,
         unitPrice: w.unitPrice,
         amount: w.amount,
+        isHeader: w.isHeader,
       }))
     );
     setBoqPreviewFileName(project?.workItemsFileName || "");
@@ -642,6 +643,7 @@ export default function ProjectSheet({
 
   const knownNames = getKnownNames(allProjects);
   const knownJobTypes = getKnownJobTypes(allProjects);
+  const selectableWorkItems = project ? project.workItems.filter((w) => !w.isHeader) : [];
 
   const totalPerson = (project?.laborLogs || [])
     .filter((l) => l.type === "인력")
@@ -794,12 +796,29 @@ export default function ProjectSheet({
                 <>
                   <div className="wi-summary">
                     업로드 미리보기 — 내용을 확인·수정한 뒤 저장하세요. 품목{" "}
-                    <b>{boqPreview.length}개</b> · 합계{" "}
+                    <b>{boqPreview.filter((it) => !it.isHeader).length}개</b> · 합계{" "}
                     <b>{formatWon(boqPreview.reduce((s, it) => s + (Number(it.amount) || 0), 0))}원</b>
                   </div>
                   {uploadError && <div className="login-error" style={{ marginTop: 8 }}>{uploadError}</div>}
                   <div style={{ marginTop: 10 }}>
-                    {boqPreview.map((it) => (
+                    {boqPreview.map((it) =>
+                      it.isHeader ? (
+                        <div className="wi-edit-row" key={it._key}>
+                          <div className="wi-edit-row-top">
+                            <input
+                              className="wi-edit-name"
+                              type="text"
+                              style={{ fontWeight: 700 }}
+                              placeholder="구분 제목 (예: 1. 토공)"
+                              value={it.name}
+                              onChange={(e) => updatePreviewItem(it._key, "name", e.target.value)}
+                            />
+                            <div className="lg-del" onClick={() => removePreviewItem(it._key)}>
+                              ✕
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
                       <div className="wi-edit-row" key={it._key}>
                         <div className="wi-edit-row-top">
                           <input
@@ -863,7 +882,8 @@ export default function ProjectSheet({
                           />
                         </div>
                       </div>
-                    ))}
+                      )
+                    )}
                   </div>
                   <button className="wi-upload-btn" onClick={addPreviewItem} style={{ marginTop: 8 }}>
                     + 항목 추가
@@ -908,7 +928,7 @@ export default function ProjectSheet({
                       <span style={{ fontSize: 15 }}>{boqOpen ? "📂" : "📁"}</span>
                       <span style={{ flex: 1 }}>
                         착공내역서 합계: <b>{formatWon(project.workItemsTotal)}원</b> · 공종{" "}
-                        <b>{project.workItems.length}개</b>
+                        <b>{selectableWorkItems.length}개</b>
                         {project.workItemsFileName ? " · " + project.workItemsFileName : ""}
                         <br />
                         <span style={{ fontSize: 11, color: "#8a8371" }}>
@@ -932,6 +952,22 @@ export default function ProjectSheet({
                   {project.workItems.length > 0 && boqOpen && (
                     <div style={{ marginTop: 10 }}>
                       {project.workItems.map((w) => {
+                        if (w.isHeader) {
+                          return (
+                            <div
+                              key={w.id}
+                              style={{
+                                fontWeight: 700,
+                                fontSize: 13,
+                                marginTop: 10,
+                                paddingBottom: 4,
+                                borderBottom: "1px solid var(--line)",
+                              }}
+                            >
+                              {w.name}
+                            </div>
+                          );
+                        }
                         const prog = getWorkItemProgress(project, w.id);
                         return (
                           <div className="wi-item" key={w.id}>
@@ -1055,13 +1091,13 @@ export default function ProjectSheet({
                             value={r.amount || ""}
                             onChange={(e) => updateDailyRow(r._key, "amount", e.target.value)}
                           />
-                          {project.workItems.length > 0 && (
+                          {selectableWorkItems.length > 0 && (
                             <select
                               value={r.workItemId}
                               onChange={(e) => updateDailyRow(r._key, "workItemId", e.target.value)}
                             >
                               <option value="">공종 선택안함</option>
-                              {project.workItems.map((w) => (
+                              {selectableWorkItems.map((w) => (
                                 <option key={w.id} value={w.id}>
                                   {w.name}
                                   {w.spec ? ` (${w.spec})` : ""} · 예산 {formatWon(w.amount)}원
@@ -1151,13 +1187,13 @@ export default function ProjectSheet({
                             onChange={(e) => updateDailyRow(r._key, "vendor", e.target.value)}
                           />
                         )}
-                        {project.workItems.length > 0 && (
+                        {selectableWorkItems.length > 0 && (
                           <select
                             value={r.workItemId}
                             onChange={(e) => updateDailyRow(r._key, "workItemId", e.target.value)}
                           >
                             <option value="">공종 선택안함</option>
-                            {project.workItems.map((w) => (
+                            {selectableWorkItems.map((w) => (
                               <option key={w.id} value={w.id}>
                                 {w.name}
                                 {w.spec ? ` (${w.spec})` : ""} · 예산 {formatWon(w.amount)}원
@@ -1541,14 +1577,14 @@ export default function ProjectSheet({
                 <option value="운반비">운반비</option>
                 <option value="잡자재">잡자재비</option>
               </select>
-              {project.workItems.length > 0 ? (
+              {selectableWorkItems.length > 0 ? (
                 <select
                   className="lg-workitem-select"
                   value={logForm.workItemId}
                   onChange={(e) => setLogForm({ ...logForm, workItemId: e.target.value })}
                 >
                   <option value="">공종 선택안함</option>
-                  {project.workItems.map((w) => (
+                  {selectableWorkItems.map((w) => (
                     <option key={w.id} value={w.id}>
                       {w.name}
                       {w.spec ? ` (${w.spec})` : ""} · 예산 {formatWon(w.amount)}원
