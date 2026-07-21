@@ -1371,7 +1371,7 @@ export default function ProjectSheet({
                                       </>
                                     ) : (
                                       <div
-                                        style={{ fontSize: 12, cursor: "pointer" }}
+                                        style={{ fontSize: 12, cursor: "pointer", whiteSpace: "pre-wrap" }}
                                         onClick={() => startEditNote(d.date, d.note)}
                                       >
                                         {d.note ? (

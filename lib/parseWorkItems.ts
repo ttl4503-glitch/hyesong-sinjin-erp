@@ -10,12 +10,6 @@ export interface ParsedWorkItem {
   isHeader?: boolean;
 }
 
-// Numbered category-header rows in a 내역서 ("1. 토공", "2) 우수공" etc.) have
-// no quantity/unit/price/amount of their own — they're just section titles
-// for the items below. We keep them (as isHeader rows) purely so the
-// displayed list can show the same section breaks as the source file.
-const HEADER_NAME_PATTERN = /^\d+[.)]\s*\S/;
-
 export interface ParsedWorkbook {
   items: ParsedWorkItem[];
   total: number;
@@ -74,6 +68,10 @@ function findHeaderRow(aoa: string[][]): { headerRowIdx: number; cols: Record<st
     const row0 = (aoa[i] || []).map(normCell);
     const nameIdx = findNameCol(row0, nameKeys);
     if (nameIdx < 0) continue;
+    // When 품명 and 공종 are separate columns, section-header rows ("1. 토공")
+    // are only filled in under 공종 — keep its index too so extractItems can
+    // fall back to it when the preferred name column is blank on a row.
+    const sectionIdx = findCol(row0, ["공종"]);
 
     const cols = { spec: -1, unit: -1, qty: -1, price: -1, amount: -1 };
     let lastOffset = 0;
@@ -98,7 +96,7 @@ function findHeaderRow(aoa: string[][]): { headerRowIdx: number; cols: Record<st
     }
 
     if (cols.amount >= 0 || cols.qty >= 0) {
-      return { headerRowIdx: i + lastOffset, cols: { name: nameIdx, ...cols } };
+      return { headerRowIdx: i + lastOffset, cols: { name: nameIdx, section: sectionIdx, ...cols } };
     }
   }
   return null;
@@ -114,7 +112,13 @@ function extractItems(
   for (let i = headerRowIdx + 1; i < aoa.length; i++) {
     const row = aoa[i];
     if (!row || row.length === 0) continue;
-    const rawName = String(row[cols.name] || "").trim();
+    let rawName = String(row[cols.name] || "").trim();
+    // 품명 is blank on this row but a separate 공종 column has text — this is
+    // almost certainly a section-title row ("1. 토공") that only exists in
+    // the 공종 column, so fall back to it instead of dropping the row.
+    if (!rawName && cols.section >= 0 && cols.section !== cols.name) {
+      rawName = String(row[cols.section] || "").trim();
+    }
     if (!rawName) continue;
     // Exact match only — a substring check would also reject legitimate item
     // names that happen to contain "계" as a syllable (e.g. 경계석, 온도계).
@@ -128,9 +132,10 @@ function extractItems(
     if (!amount && qty && unitPrice) amount = qty * unitPrice;
 
     if (!amount) {
-      if (HEADER_NAME_PATTERN.test(rawName) && !qty && !unitPrice && !unit) {
-        items.push({ name: rawName, spec: "", unit: "", qty: 0, unitPrice: 0, amount: 0, isHeader: true });
-      }
+      // No cost data at all on this row — almost always a category/section
+      // title row (numbered like "1. 토공", lettered, or otherwise) rather
+      // than real junk, so keep it as a divider instead of silently dropping it.
+      items.push({ name: rawName, spec: "", unit: "", qty: 0, unitPrice: 0, amount: 0, isHeader: true });
       continue;
     }
 
