@@ -730,10 +730,13 @@ export default function ProjectSheet({
         <div className="field">
           <label>계약금액 (원)</label>
           <input
-            type="number"
-            placeholder="예: 150000000"
-            value={form.contractAmount}
-            onChange={(e) => setForm({ ...form, contractAmount: e.target.value })}
+            type="text"
+            inputMode="numeric"
+            placeholder="예: 150,000,000"
+            value={form.contractAmount ? Number(form.contractAmount).toLocaleString("ko-KR") : ""}
+            onChange={(e) =>
+              setForm({ ...form, contractAmount: e.target.value.replace(/[^0-9]/g, "") })
+            }
           />
         </div>
         <div className="field">
