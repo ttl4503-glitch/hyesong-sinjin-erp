@@ -21,7 +21,7 @@ html, body{
   color:var(--ink);
   -webkit-font-smoothing:antialiased;
 }
-.app{max-width:520px; margin:0 auto; min-height:100vh; background:var(--paper); position:relative;}
+.app{max-width:520px; margin:0 auto; min-height:100vh; background:var(--paper); position:relative; padding-bottom:90px;}
 
 /* Header */
 .topbar{
