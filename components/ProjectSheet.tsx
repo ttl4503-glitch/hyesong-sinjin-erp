@@ -1335,11 +1335,36 @@ export default function ProjectSheet({
                                         const amountPart = l.amount ? formatWon(l.amount) + "원" : "";
                                         const mid = [qtyPart, ratePart, amountPart].filter(Boolean).join(" · ");
                                         return (
-                                          <div key={l.id} style={{ fontSize: 12, padding: "3px 0" }}>
-                                            {l.jobType ? l.jobType + " · " : ""}
-                                            {l.name}
-                                            {mid ? " · " + mid : ""}
-                                            {l.vendor ? " · " + l.vendor : ""}
+                                          <div className="lg-item" key={l.id} style={{ padding: "3px 0" }}>
+                                            <div className="lg-body">
+                                              <div className="lg-name" style={{ fontSize: 12 }}>
+                                                {l.jobType ? l.jobType + " · " : ""}
+                                                {l.name}
+                                                {mid ? " · " + mid : ""}
+                                                {l.vendor ? " · " + l.vendor : ""}
+                                              </div>
+                                            </div>
+                                            {RECEIPT_TYPES.includes(l.type) && (
+                                              <div
+                                                className="lg-edit"
+                                                style={l.receipt ? { color: "var(--blueprint-light)" } : undefined}
+                                                onClick={() =>
+                                                  receiptBusyId === l.id
+                                                    ? undefined
+                                                    : l.receipt
+                                                    ? viewReceipt(l.id)
+                                                    : triggerReceiptUpload(l.id)
+                                                }
+                                              >
+                                                {receiptBusyId === l.id ? "…" : "🧾"}
+                                              </div>
+                                            )}
+                                            <div className="lg-edit" onClick={() => startEditLog(l)}>
+                                              ✎
+                                            </div>
+                                            <div className="lg-del" onClick={() => handleDeleteLog(l.id)}>
+                                              ✕
+                                            </div>
                                           </div>
                                         );
                                       })}
