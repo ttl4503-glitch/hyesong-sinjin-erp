@@ -22,7 +22,7 @@ import { extractReceiptAmount } from "@/lib/receiptOcr";
 
 const RECEIPT_TYPES = ["장비", "자재", "식대", "참", "운반비", "잡자재"];
 const TAX_INVOICE_TYPES = ["자재", "운반비", "잡자재"];
-const VENDOR_TYPES = ["자재", "식대", "운반비"];
+const VENDOR_TYPES = ["자재", "식대", "운반비", "잡자재"];
 // Types whose amount can be OCR-auto-filled from a receipt photo (equipment
 // cost is already computed from 공수×단가, so it's excluded).
 const OCR_AMOUNT_TYPES = ["자재", "식대", "참", "운반비", "잡자재"];
@@ -351,9 +351,13 @@ export default function ProjectSheet({
   function onLgNameChange(name: string) {
     setLogForm((f) => {
       const next = { ...f, name };
-      if (f.type === "인력" || f.type === "장비") {
-        const known = getKnownNames(allProjects).find((k) => k.name === name && k.type === f.type);
-        if (known && known.rate) next.rate = String(known.rate);
+      const known = getKnownNames(allProjects).find((k) => k.name === name && k.type === f.type);
+      if (known && (f.type === "인력" || f.type === "장비") && known.rate) {
+        next.rate = String(known.rate);
+      }
+      if (known && OCR_AMOUNT_TYPES.includes(f.type)) {
+        if (known.unit) next.unit = known.unit;
+        if (known.vendor) next.vendor = known.vendor;
       }
       return next;
     });
@@ -520,13 +524,17 @@ export default function ProjectSheet({
           return next;
         }
         const next = { ...r, [field]: String(value) };
-        if (field === "name" && (r.type === "인력" || r.type === "장비")) {
+        if (field === "name") {
           const known = getKnownNames(allProjects).find(
             (k) => k.name === value && k.type === r.type
           );
-          if (known && known.rate) {
+          if (known && (r.type === "인력" || r.type === "장비") && known.rate) {
             next.rate = known.rate;
             next.amount = (Number(next.qty) || 0) * known.rate;
+          }
+          if (known && OCR_AMOUNT_TYPES.includes(r.type)) {
+            if (known.unit) next.unit = known.unit;
+            if (known.vendor) next.vendor = known.vendor;
           }
         }
         return next;
@@ -977,7 +985,7 @@ export default function ProjectSheet({
                           <input
                             className="wi-edit-name"
                             type="text"
-                            list={type === "인력" ? "lg_name_options" : undefined}
+                            list="lg_name_options"
                             placeholder={type === "인력" ? "이름" : "장비명"}
                             value={r.name}
                             onChange={(e) => updateDailyRow(r._key, "name", e.target.value)}
@@ -1075,6 +1083,7 @@ export default function ProjectSheet({
                         <input
                           className="wi-edit-name"
                           type="text"
+                          list="lg_name_options"
                           placeholder="품목"
                           value={r.name}
                           onChange={(e) => updateDailyRow(r._key, "name", e.target.value)}

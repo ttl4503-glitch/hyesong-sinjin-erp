@@ -122,16 +122,25 @@ export function getWorkItemProgress(p: Project, itemId: string) {
 }
 
 export function getKnownNames(projects: Project[]) {
-  const map = new Map<string, { type: string; rate: number }>();
+  const map = new Map<string, { type: string; rate: number; unit: string; vendor: string }>();
   projects.forEach((pr) => {
     (pr.laborLogs || []).forEach((l) => {
-      if (l.name) map.set(l.name, { type: l.type, rate: l.rate || 0 });
+      if (l.name) {
+        map.set(l.name, {
+          type: l.type,
+          rate: l.rate || 0,
+          unit: l.unit || "",
+          vendor: l.vendor || "",
+        });
+      }
     });
   });
   return Array.from(map.entries()).map(([name, info]) => ({
     name,
     type: info.type,
     rate: info.rate,
+    unit: info.unit,
+    vendor: info.vendor,
   }));
 }
 
