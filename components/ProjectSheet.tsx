@@ -698,10 +698,20 @@ export default function ProjectSheet({
   ).sort((a, b) => b.month.localeCompare(a.month));
 
   return (
-    <div className="overlay open" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="overlay open">
       <div className="sheet">
         <div className="sheet-handle" />
-        <h2>{isEdit ? "공사 상세" : "새 공사 등록"}</h2>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h2 style={{ margin: 0 }}>{isEdit ? "공사 상세" : "새 공사 등록"}</h2>
+          <button
+            type="button"
+            className="btn-ghost"
+            style={{ padding: "6px 14px", fontSize: 13 }}
+            onClick={onClose}
+          >
+            ← 뒤로가기
+          </button>
+        </div>
 
         {error && <div className="login-error">{error}</div>}
 
