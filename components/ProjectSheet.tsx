@@ -985,7 +985,7 @@ export default function ProjectSheet({
                           <input
                             className="wi-edit-name"
                             type="text"
-                            list="lg_name_options"
+                            list={`lg_name_options_${type}`}
                             placeholder={type === "인력" ? "이름" : "장비명"}
                             value={r.name}
                             onChange={(e) => updateDailyRow(r._key, "name", e.target.value)}
@@ -1083,7 +1083,7 @@ export default function ProjectSheet({
                         <input
                           className="wi-edit-name"
                           type="text"
-                          list="lg_name_options"
+                          list={`lg_name_options_${r.type}`}
                           placeholder="품목"
                           value={r.name}
                           onChange={(e) => updateDailyRow(r._key, "name", e.target.value)}
@@ -1448,11 +1448,15 @@ export default function ProjectSheet({
               })}
             </div>
 
-            <datalist id="lg_name_options">
-              {knownNames.map((k) => (
-                <option key={k.name} value={k.name} />
-              ))}
-            </datalist>
+            {TYPES_ORDER.map((t) => (
+              <datalist id={`lg_name_options_${t}`} key={t}>
+                {knownNames
+                  .filter((k) => k.type === t)
+                  .map((k) => (
+                    <option key={k.name} value={k.name} />
+                  ))}
+              </datalist>
+            ))}
             <datalist id="lg_jobtype_options">
               {knownJobTypes.map((j) => (
                 <option key={j} value={j} />
@@ -1508,7 +1512,7 @@ export default function ProjectSheet({
               <input
                 className="lg-name-input"
                 type="text"
-                list="lg_name_options"
+                list={`lg_name_options_${logForm.type}`}
                 placeholder={NAME_PLACEHOLDER[logForm.type] || "항목명"}
                 value={logForm.name}
                 onChange={(e) => onLgNameChange(e.target.value)}
