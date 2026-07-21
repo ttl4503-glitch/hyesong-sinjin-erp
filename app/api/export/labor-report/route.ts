@@ -24,9 +24,12 @@ export async function GET(req: NextRequest) {
 
   const people: Record<string, PersonAgg> = {};
 
+  const EXCLUDED_JOB_TYPES = ["식재팀", "직원"];
+
   projects.forEach((p) => {
     p.laborLogs.forEach((l) => {
       if (l.type !== "인력") return;
+      if (EXCLUDED_JOB_TYPES.includes(l.jobType)) return;
       if (month && (l.date || "").slice(0, 7) !== month) return;
 
       const key = l.name;
