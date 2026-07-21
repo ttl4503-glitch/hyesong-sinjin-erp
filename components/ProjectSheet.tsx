@@ -453,6 +453,23 @@ export default function ProjectSheet({
     ]);
   }
 
+  function startManualBoq() {
+    setBoqPreview(
+      (project?.workItems || []).map((w) => ({
+        _key: nextDraftKey(),
+        name: w.name,
+        spec: w.spec,
+        unit: w.unit,
+        qty: w.qty,
+        unitPrice: w.unitPrice,
+        amount: w.amount,
+      }))
+    );
+    setBoqPreviewFileName(project?.workItemsFileName || "");
+    setUploadError("");
+    setBoqOpen(true);
+  }
+
   function cancelPreview() {
     setBoqPreview(null);
     setBoqPreviewFileName("");
@@ -822,8 +839,9 @@ export default function ProjectSheet({
                 <>
                   {project.workItems.length === 0 ? (
                     <div className="wi-empty">
-                      아직 착공내역서가 등록되지 않았어요. 엑셀 파일(공종·수량·단가·금액 포함)을 업로드하면, 아래
-                      인력·장비·자재 투입 시 공종을 선택할 수 있고 공종별 진행률이 자동으로 계산돼요.
+                      아직 착공내역서가 등록되지 않았어요. 엑셀 파일(공종·수량·단가·금액 포함)을 업로드하거나, 아래
+                      "수작업으로 입력" 버튼으로 직접 입력하면, 아래 인력·장비·자재 투입 시 공종을 선택할 수 있고
+                      공종별 진행률이 자동으로 계산돼요.
                     </div>
                   ) : (
                     <div
@@ -855,9 +873,14 @@ export default function ProjectSheet({
                       </span>
                     </div>
                   )}
-                  <button className="wi-upload-btn" onClick={() => fileInputRef.current?.click()}>
-                    📁 {project.workItems.length === 0 ? "착공내역서 엑셀 업로드" : "다시 업로드"}
-                  </button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="wi-upload-btn" onClick={() => fileInputRef.current?.click()}>
+                      📁 {project.workItems.length === 0 ? "착공내역서 엑셀 업로드" : "다시 업로드"}
+                    </button>
+                    <button className="wi-upload-btn" onClick={startManualBoq}>
+                      ✏️ {project.workItems.length === 0 ? "수작업으로 입력" : "수작업으로 추가/수정"}
+                    </button>
+                  </div>
                   {uploadError && <div className="login-error" style={{ marginTop: 8 }}>{uploadError}</div>}
                   {project.workItems.length > 0 && boqOpen && (
                     <div style={{ marginTop: 10 }}>
