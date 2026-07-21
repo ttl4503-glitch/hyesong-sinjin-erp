@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
         r.name,
         r.jobType,
         sortedDays.length,
-        sortedDays.join(", "),
+        sortedDays.map((d) => (d.length === 10 ? d.slice(5) : d)).join(", "),
         rateLabel,
         r.totalQty,
         r.totalAmount,
