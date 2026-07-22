@@ -17,8 +17,21 @@ interface PersonAgg {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const month = searchParams.get("month") || ""; // "YYYY-MM"
+  const scope = searchParams.get("scope") || "all"; // "all" | "company" | "project"
+  const company = searchParams.get("company") || "";
+  const projectId = searchParams.get("projectId") || "";
 
-  const projects = await prisma.project.findMany({ include: { laborLogs: true } });
+  let projects = await prisma.project.findMany({ include: { laborLogs: true } });
+  let scopeLabel = "전체(혜송+신진)";
+  if (scope === "company" && company) {
+    projects = projects.filter((p) => p.company === company);
+    scopeLabel = company;
+  } else if (scope === "project" && projectId) {
+    const proj = projects.find((p) => p.id === projectId);
+    projects = proj ? [proj] : [];
+    scopeLabel = proj ? proj.name : "현장";
+  }
+
   const workers = await prisma.worker.findMany();
   const workerByName = new Map(workers.map((w) => [w.name, w]));
 
@@ -46,6 +59,7 @@ export async function GET(req: NextRequest) {
   });
 
   const rows: (string | number)[][] = [
+    [`집계 범위: ${scopeLabel}${month ? " · " + month : ""}`],
     ["이름", "직종", "근무일수", "근무날짜", "단가", "총공수", "총금액(원)", "주민번호앞자리", "은행", "계좌번호"],
   ];
 
@@ -97,7 +111,9 @@ export async function GET(req: NextRequest) {
 
   const today = new Date().toISOString().slice(0, 10);
   const label = month || "전체기간";
-  const filename = encodeURIComponent(`혜송신진_노무비신고집계_${label}_${today}.xlsx`);
+  const filename = encodeURIComponent(
+    `${scopeLabel}_노무비신고집계_${label}_${today}.xlsx`
+  );
 
   return new NextResponse(buf, {
     headers: {

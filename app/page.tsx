@@ -16,6 +16,9 @@ export default function HomePage() {
   const [sheet, setSheet] = useState<SheetState>(null);
   const [reportMonth, setReportMonth] = useState(todayStr().slice(0, 7));
   const [showCompleted, setShowCompleted] = useState(false);
+  const [laborScope, setLaborScope] = useState<"all" | "company" | "project">("all");
+  const [laborCompany, setLaborCompany] = useState(COMPANIES[0]);
+  const [laborProjectId, setLaborProjectId] = useState("");
 
   useEffect(() => {
     api
@@ -50,6 +53,30 @@ export default function HomePage() {
   );
 
   const dashTotal = ongoingProjects.length;
+
+  const allProjectsSorted = useMemo(
+    () => [...projects].sort((a, b) => a.company.localeCompare(b.company) || a.name.localeCompare(b.name)),
+    [projects]
+  );
+
+  const laborReportHref = useMemo(() => {
+    const params = new URLSearchParams({ month: reportMonth });
+    if (laborScope === "company") {
+      params.set("scope", "company");
+      params.set("company", laborCompany);
+    } else if (laborScope === "project" && laborProjectId) {
+      params.set("scope", "project");
+      params.set("projectId", laborProjectId);
+    }
+    return `/api/export/labor-report?${params.toString()}`;
+  }, [reportMonth, laborScope, laborCompany, laborProjectId]);
+
+  const laborReportLabel =
+    laborScope === "company"
+      ? `🧾 노무비 신고용 집계 (${laborCompany})`
+      : laborScope === "project"
+      ? `🧾 노무비 신고용 집계 (${allProjectsSorted.find((p) => p.id === laborProjectId)?.name || "현장 선택"})`
+      : "🧾 노무비 신고용 집계 (혜송+신진 합산)";
 
   function updateProjectInList(updated: Project) {
     setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -114,7 +141,7 @@ export default function HomePage() {
           value={reportMonth}
           onChange={(e) => setReportMonth(e.target.value)}
           style={{
-            flex: "0 0 130px",
+            flex: "0 0 110px",
             padding: "0 8px",
             border: "1px solid var(--line)",
             borderRadius: 6,
@@ -123,18 +150,91 @@ export default function HomePage() {
             color: "var(--ink)",
           }}
         />
+        <select
+          value={laborScope}
+          onChange={(e) => {
+            const v = e.target.value as "all" | "company" | "project";
+            setLaborScope(v);
+            if (v === "project" && !laborProjectId && allProjectsSorted.length > 0) {
+              setLaborProjectId(allProjectsSorted[0].id);
+            }
+          }}
+          style={{
+            flex: 1,
+            padding: "0 8px",
+            border: "1px solid var(--line)",
+            borderRadius: 6,
+            fontSize: 12,
+            background: "#fff",
+            color: "var(--ink)",
+          }}
+        >
+          <option value="all">전체집계 (혜송+신진)</option>
+          <option value="company">회사별 집계</option>
+          <option value="project">현장별 집계</option>
+        </select>
+      </div>
+
+      {laborScope === "company" && (
+        <div style={{ padding: "8px 16px 0 16px" }}>
+          <select
+            value={laborCompany}
+            onChange={(e) => setLaborCompany(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "8px",
+              border: "1px solid var(--line)",
+              borderRadius: 6,
+              fontSize: 12,
+              background: "#fff",
+              color: "var(--ink)",
+            }}
+          >
+            {COMPANIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {laborScope === "project" && (
+        <div style={{ padding: "8px 16px 0 16px" }}>
+          <select
+            value={laborProjectId}
+            onChange={(e) => setLaborProjectId(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "8px",
+              border: "1px solid var(--line)",
+              borderRadius: 6,
+              fontSize: 12,
+              background: "#fff",
+              color: "var(--ink)",
+            }}
+          >
+            {allProjectsSorted.map((p) => (
+              <option key={p.id} value={p.id}>
+                [{p.company}] {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div style={{ padding: "8px 16px 0 16px" }}>
         <a
           className="export-btn"
           style={{
-            flex: 1,
             padding: 10,
             display: "block",
             textAlign: "center",
             textDecoration: "none",
           }}
-          href={`/api/export/labor-report?month=${reportMonth}`}
+          href={laborReportHref}
         >
-          🧾 노무비 신고용 집계 (혜송+신진 합산)
+          {laborReportLabel}
         </a>
       </div>
 
