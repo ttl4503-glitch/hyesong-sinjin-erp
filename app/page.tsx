@@ -19,6 +19,10 @@ export default function HomePage() {
   const [laborScope, setLaborScope] = useState<"all" | "company" | "project">("all");
   const [laborCompany, setLaborCompany] = useState(COMPANIES[0]);
   const [laborProjectId, setLaborProjectId] = useState("");
+  const [monthlyMonth, setMonthlyMonth] = useState(todayStr().slice(0, 7));
+  const [monthlyScope, setMonthlyScope] = useState<"all" | "company" | "project">("all");
+  const [monthlyCompany, setMonthlyCompany] = useState(COMPANIES[0]);
+  const [monthlyProjectId, setMonthlyProjectId] = useState("");
 
   useEffect(() => {
     api
@@ -78,6 +82,25 @@ export default function HomePage() {
       ? `🧾 노무비 신고용 집계 (${allProjectsSorted.find((p) => p.id === laborProjectId)?.name || "현장 선택"})`
       : "🧾 노무비 신고용 집계 (혜송+신진 합산)";
 
+  const monthlyReportHref = useMemo(() => {
+    const params = new URLSearchParams({ month: monthlyMonth });
+    if (monthlyScope === "company") {
+      params.set("scope", "company");
+      params.set("company", monthlyCompany);
+    } else if (monthlyScope === "project" && monthlyProjectId) {
+      params.set("scope", "project");
+      params.set("projectId", monthlyProjectId);
+    }
+    return `/api/export/monthly?${params.toString()}`;
+  }, [monthlyMonth, monthlyScope, monthlyCompany, monthlyProjectId]);
+
+  const monthlyReportLabel =
+    monthlyScope === "company"
+      ? `📊 장비·자재 집계 (${monthlyCompany})`
+      : monthlyScope === "project"
+      ? `📊 장비·자재 집계 (${allProjectsSorted.find((p) => p.id === monthlyProjectId)?.name || "현장 선택"})`
+      : "📊 장비·자재 집계 (혜송+신진 합산)";
+
   function updateProjectInList(updated: Project) {
     setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
   }
@@ -125,13 +148,101 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div style={{ padding: "10px 16px 0 16px" }}>
+      <div style={{ padding: "10px 16px 0 16px", display: "flex", gap: 6 }}>
+        <input
+          type="month"
+          value={monthlyMonth}
+          onChange={(e) => setMonthlyMonth(e.target.value)}
+          style={{
+            flex: "0 0 110px",
+            padding: "0 8px",
+            border: "1px solid var(--line)",
+            borderRadius: 6,
+            fontSize: 12,
+            background: "#fff",
+            color: "var(--ink)",
+          }}
+        />
+        <select
+          value={monthlyScope}
+          onChange={(e) => {
+            const v = e.target.value as "all" | "company" | "project";
+            setMonthlyScope(v);
+            if (v === "project" && !monthlyProjectId && allProjectsSorted.length > 0) {
+              setMonthlyProjectId(allProjectsSorted[0].id);
+            }
+          }}
+          style={{
+            flex: 1,
+            padding: "0 8px",
+            border: "1px solid var(--line)",
+            borderRadius: 6,
+            fontSize: 12,
+            background: "#fff",
+            color: "var(--ink)",
+          }}
+        >
+          <option value="all">전체집계 (혜송+신진)</option>
+          <option value="company">회사별 집계</option>
+          <option value="project">현장별 집계</option>
+        </select>
+      </div>
+
+      {monthlyScope === "company" && (
+        <div style={{ padding: "8px 16px 0 16px" }}>
+          <select
+            value={monthlyCompany}
+            onChange={(e) => setMonthlyCompany(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "8px",
+              border: "1px solid var(--line)",
+              borderRadius: 6,
+              fontSize: 12,
+              background: "#fff",
+              color: "var(--ink)",
+            }}
+          >
+            {COMPANIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {monthlyScope === "project" && (
+        <div style={{ padding: "8px 16px 0 16px" }}>
+          <select
+            value={monthlyProjectId}
+            onChange={(e) => setMonthlyProjectId(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "8px",
+              border: "1px solid var(--line)",
+              borderRadius: 6,
+              fontSize: 12,
+              background: "#fff",
+              color: "var(--ink)",
+            }}
+          >
+            {allProjectsSorted.map((p) => (
+              <option key={p.id} value={p.id}>
+                [{p.company}] {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div style={{ padding: "8px 16px 0 16px" }}>
         <a
           className="export-btn"
-          style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
-          href={`/api/export/monthly?company=${encodeURIComponent(company)}`}
+          style={{ padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
+          href={monthlyReportHref}
         >
-          📊 월별 집계 엑셀 다운로드 (인력·장비·자재·식대)
+          {monthlyReportLabel}
         </a>
       </div>
 

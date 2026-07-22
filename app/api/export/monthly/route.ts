@@ -4,182 +4,83 @@ import { prisma } from "@/lib/prisma";
 
 interface Row {
   name: string;
-  pGongsu: number;
-  pCost: number;
   eGongsu: number;
   eCost: number;
   materialCost: number;
-  mealCost: number;
-  snackCost: number;
-  freightCost: number;
-  miscCost: number;
 }
 
 function emptyRow(name: string): Row {
-  return {
-    name,
-    pGongsu: 0,
-    pCost: 0,
-    eGongsu: 0,
-    eCost: 0,
-    materialCost: 0,
-    mealCost: 0,
-    snackCost: 0,
-    freightCost: 0,
-    miscCost: 0,
-  };
+  return { name, eGongsu: 0, eCost: 0, materialCost: 0 };
 }
 
 function rowTotal(r: Row) {
-  return r.pCost + r.eCost + r.materialCost + r.mealCost + r.snackCost + r.freightCost + r.miscCost;
+  return r.eCost + r.materialCost;
 }
 
+// 장비·자재 집계 — 인력은 노무비 신고용 집계에서 따로 다루므로 여기서는
+// 장비 사용료와 자재대만 뽑는다. month가 주어지면 그 달만, 없으면 전체 기간.
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
+  const month = searchParams.get("month") || ""; // "YYYY-MM"
+  const scope = searchParams.get("scope") || "all"; // "all" | "company" | "project"
   const company = searchParams.get("company") || "";
+  const projectId = searchParams.get("projectId") || "";
 
-  const projects = await prisma.project.findMany({
-    where: company ? { company } : undefined,
-    include: { laborLogs: true },
-  });
+  let projects = await prisma.project.findMany({ include: { laborLogs: true } });
+  let scopeLabel = "전체(혜송+신진)";
+  if (scope === "company" && company) {
+    projects = projects.filter((p) => p.company === company);
+    scopeLabel = company;
+  } else if (scope === "project" && projectId) {
+    const proj = projects.find((p) => p.id === projectId);
+    projects = proj ? [proj] : [];
+    scopeLabel = proj ? proj.name : "현장";
+  }
 
-  const monthly: Record<string, Record<string, Row>> = {};
+  const byProject: Record<string, Row> = {};
 
   projects.forEach((p) => {
     p.laborLogs.forEach((l) => {
-      const month = (l.date || "").slice(0, 7) || "날짜미상";
-      if (!monthly[month]) monthly[month] = {};
-      if (!monthly[month][p.id]) monthly[month][p.id] = emptyRow(p.name);
-      const row = monthly[month][p.id];
-      if (l.type === "인력") {
-        row.pGongsu += l.qty;
-        row.pCost += l.amount;
-      } else if (l.type === "장비") {
+      if (l.type !== "장비" && l.type !== "자재") return;
+      if (month && (l.date || "").slice(0, 7) !== month) return;
+
+      if (!byProject[p.id]) byProject[p.id] = emptyRow(p.name);
+      const row = byProject[p.id];
+      if (l.type === "장비") {
         row.eGongsu += l.qty;
         row.eCost += l.amount;
-      } else if (l.type === "자재") {
+      } else {
         row.materialCost += l.amount;
-      } else if (l.type === "식대") {
-        row.mealCost += l.amount;
-      } else if (l.type === "참") {
-        row.snackCost += l.amount;
-      } else if (l.type === "운반비") {
-        row.freightCost += l.amount;
-      } else if (l.type === "잡자재") {
-        row.miscCost += l.amount;
       }
     });
   });
 
-  const months = Object.keys(monthly).sort();
-  const rows: (string | number)[][] = [];
-  rows.push([
-    "월",
-    "현장명",
-    "인력 공수",
-    "인력 비용(원)",
-    "장비 공수",
-    "장비 비용(원)",
-    "자재대(원)",
-    "식대(원)",
-    "참(원)",
-    "운반비(원)",
-    "잡자재비(원)",
-    "합계 비용(원)",
-  ]);
+  const rows: (string | number)[][] = [
+    [`집계 범위: ${scopeLabel}${month ? " · " + month : " · 전체기간"}`],
+    ["현장명", "장비 공수", "장비 비용(원)", "자재대(원)", "합계 비용(원)"],
+  ];
 
   const grand = emptyRow("");
-
-  months.forEach((month) => {
-    const projRows = Object.values(monthly[month]).sort((a, b) => a.name.localeCompare(b.name));
-    const sub = emptyRow("");
-    projRows.forEach((r) => {
-      rows.push([
-        month,
-        r.name,
-        r.pGongsu,
-        r.pCost,
-        r.eGongsu,
-        r.eCost,
-        r.materialCost,
-        r.mealCost,
-        r.snackCost,
-        r.freightCost,
-        r.miscCost,
-        rowTotal(r),
-      ]);
-      sub.pGongsu += r.pGongsu;
-      sub.pCost += r.pCost;
-      sub.eGongsu += r.eGongsu;
-      sub.eCost += r.eCost;
-      sub.materialCost += r.materialCost;
-      sub.mealCost += r.mealCost;
-      sub.snackCost += r.snackCost;
-      sub.freightCost += r.freightCost;
-      sub.miscCost += r.miscCost;
+  Object.values(byProject)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .forEach((r) => {
+      rows.push([r.name, r.eGongsu, r.eCost, r.materialCost, rowTotal(r)]);
+      grand.eGongsu += r.eGongsu;
+      grand.eCost += r.eCost;
+      grand.materialCost += r.materialCost;
     });
-    rows.push([
-      "",
-      "소계(전체 현장)",
-      sub.pGongsu,
-      sub.pCost,
-      sub.eGongsu,
-      sub.eCost,
-      sub.materialCost,
-      sub.mealCost,
-      sub.snackCost,
-      sub.freightCost,
-      sub.miscCost,
-      rowTotal(sub),
-    ]);
-    rows.push([]);
-    grand.pGongsu += sub.pGongsu;
-    grand.pCost += sub.pCost;
-    grand.eGongsu += sub.eGongsu;
-    grand.eCost += sub.eCost;
-    grand.materialCost += sub.materialCost;
-    grand.mealCost += sub.mealCost;
-    grand.snackCost += sub.snackCost;
-    grand.freightCost += sub.freightCost;
-    grand.miscCost += sub.miscCost;
-  });
 
-  rows.push([
-    "총 합계",
-    "전체 기간 · 전체 현장",
-    grand.pGongsu,
-    grand.pCost,
-    grand.eGongsu,
-    grand.eCost,
-    grand.materialCost,
-    grand.mealCost,
-    grand.snackCost,
-    grand.freightCost,
-    grand.miscCost,
-    rowTotal(grand),
-  ]);
+  rows.push(["총 합계", grand.eGongsu, grand.eCost, grand.materialCost, rowTotal(grand)]);
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [
-    { wch: 10 },
-    { wch: 22 },
-    { wch: 10 },
-    { wch: 14 },
-    { wch: 10 },
-    { wch: 14 },
-    { wch: 14 },
-    { wch: 14 },
-    { wch: 14 },
-    { wch: 14 },
-    { wch: 14 },
-    { wch: 14 },
-  ];
+  ws["!cols"] = [{ wch: 26 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "월별집계");
+  XLSX.utils.book_append_sheet(wb, ws, "장비자재집계");
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
   const today = new Date().toISOString().slice(0, 10);
-  const filename = encodeURIComponent(`${company || "전체"}_월별집계_${today}.xlsx`);
+  const label = month || "전체기간";
+  const filename = encodeURIComponent(`${scopeLabel}_장비자재집계_${label}_${today}.xlsx`);
 
   return new NextResponse(buf, {
     headers: {
