@@ -25,6 +25,7 @@ export interface WorkItem {
   unitPrice: number;
   amount: number;
   isHeader: boolean;
+  level: number;
 }
 
 export interface LaborLog {

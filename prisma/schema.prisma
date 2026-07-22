@@ -70,6 +70,7 @@ model WorkItem {
   unitPrice Float   @default(0)
   amount    Float   @default(0)
   isHeader  Boolean @default(false)
+  level     Int     @default(1)
 
   laborLogs LaborLog[]
 }

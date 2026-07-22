@@ -8,6 +8,15 @@ export interface ParsedWorkItem {
   unitPrice: number;
   amount: number;
   isHeader?: boolean;
+  level?: number;
+}
+
+// "1." (마침표) marks a 대분류(major category), "1)" (닫는 괄호) marks a
+// 중분류(sub-category) nested under it — this convention is standard across
+// 내역서 files, so we use it to indent header rows two levels deep.
+function headerLevel(marker: string): number {
+  if (/^\d+\)/.test(marker)) return 2;
+  return 1;
 }
 
 export interface ParsedWorkbook {
@@ -112,13 +121,12 @@ function extractItems(
   for (let i = headerRowIdx + 1; i < aoa.length; i++) {
     const row = aoa[i];
     if (!row || row.length === 0) continue;
-    let rawName = String(row[cols.name] || "").trim();
+    const sectionRaw = cols.section >= 0 ? String(row[cols.section] || "").trim() : "";
+    const nameRaw = cols.name >= 0 ? String(row[cols.name] || "").trim() : "";
     // 품명 is blank on this row but a separate 공종 column has text — this is
     // almost certainly a section-title row ("1. 토공") that only exists in
     // the 공종 column, so fall back to it instead of dropping the row.
-    if (!rawName && cols.section >= 0 && cols.section !== cols.name) {
-      rawName = String(row[cols.section] || "").trim();
-    }
+    const rawName = nameRaw || sectionRaw;
     if (!rawName) continue;
     // Exact match only — a substring check would also reject legitimate item
     // names that happen to contain "계" as a syllable (e.g. 경계석, 온도계).
@@ -131,18 +139,26 @@ function extractItems(
     let amount = cols.amount >= 0 ? Number(String(row[cols.amount]).replace(/,/g, "")) || 0 : 0;
     if (!amount && qty && unitPrice) amount = qty * unitPrice;
 
-    if (!amount) {
-      // No cost data at all on this row — almost always a category/section
-      // title row (numbered like "1. 토공", lettered, or otherwise) rather
-      // than real junk, so keep it as a divider instead of silently dropping it.
-      items.push({ name: rawName, spec: "", unit: "", qty: 0, unitPrice: 0, amount: 0, isHeader: true });
+    // Hierarchical 내역서 layouts mix category/subtotal rows in with real line
+    // items. A row with no amount at all, OR one with blank unit/non-positive
+    // qty (common for a subtotal row that still carries a rolled-up 금액), is
+    // a section title rather than a leaf item — keep it as a divider instead
+    // of either double-counting it or silently dropping it.
+    const looksLikeHeader = !amount || (cols.unit >= 0 && cols.qty >= 0 && (!unit || qty <= 0));
+    if (looksLikeHeader) {
+      const marker = sectionRaw && sectionRaw !== rawName ? sectionRaw : "";
+      items.push({
+        name: marker ? `${marker} ${rawName}` : rawName,
+        spec: "",
+        unit: "",
+        qty: 0,
+        unitPrice: 0,
+        amount: 0,
+        isHeader: true,
+        level: headerLevel(marker || rawName),
+      });
       continue;
     }
-
-    // Hierarchical 내역서 layouts mix category/subtotal rows (no unit, qty=0)
-    // in with real line items. When both columns are present, only count
-    // rows that look like actual items — otherwise subtotals get double-counted.
-    if (cols.unit >= 0 && cols.qty >= 0 && (!unit || qty <= 0)) continue;
 
     items.push({
       name: rawName,

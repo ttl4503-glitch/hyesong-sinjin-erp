@@ -9,6 +9,7 @@ interface CommitItem {
   unitPrice?: number;
   amount: number;
   isHeader?: boolean;
+  level?: number;
 }
 
 // Saves a (possibly user-edited) BOQ item list that was previously produced
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       unitPrice: Number(it.unitPrice) || 0,
       amount: Number(it.amount) || 0,
       isHeader: Boolean(it.isHeader),
+      level: Number(it.level) || 1,
     }))
     .filter((it) => it.name && (it.amount > 0 || it.isHeader));
 

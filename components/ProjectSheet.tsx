@@ -487,6 +487,7 @@ export default function ProjectSheet({
         unitPrice: w.unitPrice,
         amount: w.amount,
         isHeader: w.isHeader,
+        level: w.level,
       }))
     );
     setBoqPreviewFileName(project?.workItemsFileName || "");
@@ -826,12 +827,16 @@ export default function ProjectSheet({
                   <div style={{ marginTop: 10 }}>
                     {boqPreview.map((it) =>
                       it.isHeader ? (
-                        <div className="wi-edit-row" key={it._key}>
+                        <div
+                          className="wi-edit-row"
+                          key={it._key}
+                          style={it.level === 2 ? { marginLeft: 16 } : undefined}
+                        >
                           <div className="wi-edit-row-top">
                             <input
                               className="wi-edit-name"
                               type="text"
-                              style={{ fontWeight: 700 }}
+                              style={{ fontWeight: 700, fontSize: it.level === 2 ? 13 : 14 }}
                               placeholder="구분 제목 (예: 1. 토공)"
                               value={it.name}
                               onChange={(e) => updatePreviewItem(it._key, "name", e.target.value)}
@@ -976,15 +981,18 @@ export default function ProjectSheet({
                     <div style={{ marginTop: 10 }}>
                       {project.workItems.map((w) => {
                         if (w.isHeader) {
+                          const isSub = w.level === 2;
                           return (
                             <div
                               key={w.id}
                               style={{
                                 fontWeight: 700,
-                                fontSize: 13,
-                                marginTop: 10,
+                                fontSize: isSub ? 12 : 13,
+                                marginTop: isSub ? 4 : 10,
+                                marginLeft: isSub ? 16 : 0,
                                 paddingBottom: 4,
-                                borderBottom: "1px solid var(--line)",
+                                color: isSub ? "var(--ink)" : "var(--blueprint)",
+                                borderBottom: isSub ? "none" : "1px solid var(--line)",
                               }}
                             >
                               {w.name}
