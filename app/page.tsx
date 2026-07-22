@@ -63,6 +63,8 @@ export default function HomePage() {
     [projects]
   );
 
+  const allCompaniesLabel = COMPANIES.join("+");
+
   const laborReportHref = useMemo(() => {
     const params = new URLSearchParams({ month: reportMonth });
     if (laborScope === "company") {
@@ -80,7 +82,7 @@ export default function HomePage() {
       ? `🧾 노무비 신고용 집계 (${laborCompany})`
       : laborScope === "project"
       ? `🧾 노무비 신고용 집계 (${allProjectsSorted.find((p) => p.id === laborProjectId)?.name || "현장 선택"})`
-      : "🧾 노무비 신고용 집계 (혜송+신진 합산)";
+      : `🧾 노무비 신고용 집계 (${allCompaniesLabel} 합산)`;
 
   const monthlyReportHref = useMemo(() => {
     const params = new URLSearchParams({ month: monthlyMonth });
@@ -99,7 +101,7 @@ export default function HomePage() {
       ? `📊 장비·자재 집계 (${monthlyCompany})`
       : monthlyScope === "project"
       ? `📊 장비·자재 집계 (${allProjectsSorted.find((p) => p.id === monthlyProjectId)?.name || "현장 선택"})`
-      : "📊 장비·자재 집계 (혜송+신진 합산)";
+      : `📊 장비·자재 집계 (${allCompaniesLabel} 합산)`;
 
   function updateProjectInList(updated: Project) {
     setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -182,7 +184,7 @@ export default function HomePage() {
             color: "var(--ink)",
           }}
         >
-          <option value="all">전체집계 (혜송+신진)</option>
+          <option value="all">전체집계 ({allCompaniesLabel})</option>
           <option value="company">회사별 집계</option>
           <option value="project">현장별 집계</option>
         </select>
@@ -280,7 +282,7 @@ export default function HomePage() {
             color: "var(--ink)",
           }}
         >
-          <option value="all">전체집계 (혜송+신진)</option>
+          <option value="all">전체집계 ({allCompaniesLabel})</option>
           <option value="company">회사별 집계</option>
           <option value="project">현장별 집계</option>
         </select>

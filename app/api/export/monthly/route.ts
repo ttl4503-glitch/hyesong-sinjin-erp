@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
+import { COMPANIES } from "@/lib/erp";
 
 interface Row {
   name: string;
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
   const projectId = searchParams.get("projectId") || "";
 
   let projects = await prisma.project.findMany({ include: { laborLogs: true } });
-  let scopeLabel = "전체(혜송+신진)";
+  let scopeLabel = `전체(${COMPANIES.join("+")})`;
   if (scope === "company" && company) {
     projects = projects.filter((p) => p.company === company);
     scopeLabel = company;
