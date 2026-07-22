@@ -8,14 +8,15 @@ interface Row {
   eGongsu: number;
   eCost: number;
   materialCost: number;
+  freightCost: number;
 }
 
 function emptyRow(name: string): Row {
-  return { name, eGongsu: 0, eCost: 0, materialCost: 0 };
+  return { name, eGongsu: 0, eCost: 0, materialCost: 0, freightCost: 0 };
 }
 
 function rowTotal(r: Row) {
-  return r.eCost + r.materialCost;
+  return r.eCost + r.materialCost + r.freightCost;
 }
 
 interface EquipAgg {
@@ -24,9 +25,11 @@ interface EquipAgg {
   rates: Set<number>;
   totalQty: number;
   totalAmount: number;
+  taxYes: number;
+  taxNo: number;
 }
 
-interface MaterialAgg {
+interface VendorAgg {
   name: string;
   vendor: string;
   totalAmount: number;
@@ -34,8 +37,31 @@ interface MaterialAgg {
   taxNo: number;
 }
 
-// 장비·자재 집계 — 인력은 노무비 신고용 집계에서 따로 다루므로 여기서는
-// 장비 사용료와 자재대만 뽑는다. month가 주어지면 그 달만, 없으면 전체 기간.
+function taxLabel(taxYes: number, taxNo: number) {
+  if (taxYes > 0 && taxNo > 0) return `발행 ${taxYes}건 / 미발행 ${taxNo}건`;
+  return taxYes > 0 ? "발행" : "미발행";
+}
+
+function buildVendorSheet(scopeLabel: string, month: string, nameHeader: string, agg: Record<string, VendorAgg>) {
+  const rows: (string | number)[][] = [
+    [`집계 범위: ${scopeLabel}${month ? " · " + month : " · 전체기간"}`],
+    [nameHeader, "업체명", "금액 합계(원)", "세금계산서"],
+  ];
+  let total = 0;
+  Object.values(agg)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .forEach((v) => {
+      rows.push([v.name, v.vendor, v.totalAmount, taxLabel(v.taxYes, v.taxNo)]);
+      total += v.totalAmount;
+    });
+  rows.push(["총 합계", "", total, ""]);
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"] = [{ wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 20 }];
+  return ws;
+}
+
+// 장비·자재·운반비 집계 — 인력은 노무비 신고용 집계에서 따로 다루므로 여기서는
+// 장비 사용료·자재대·운반비만 뽑는다. month가 주어지면 그 달만, 없으면 전체 기간.
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const month = searchParams.get("month") || ""; // "YYYY-MM"
@@ -56,65 +82,80 @@ export async function GET(req: NextRequest) {
 
   const byProject: Record<string, Row> = {};
   const equipment: Record<string, EquipAgg> = {};
-  const materials: Record<string, MaterialAgg> = {};
+  const materials: Record<string, VendorAgg> = {};
+  const freight: Record<string, VendorAgg> = {};
 
   projects.forEach((p) => {
     p.laborLogs.forEach((l) => {
-      if (l.type !== "장비" && l.type !== "자재") return;
+      if (l.type !== "장비" && l.type !== "자재" && l.type !== "운반비") return;
       if (month && (l.date || "").slice(0, 7) !== month) return;
 
       if (!byProject[p.id]) byProject[p.id] = emptyRow(p.name);
       const row = byProject[p.id];
+
       if (l.type === "장비") {
         row.eGongsu += l.qty;
         row.eCost += l.amount;
 
         const key = `${l.name}||${l.jobType}`;
         if (!equipment[key]) {
-          equipment[key] = { name: l.name, jobType: l.jobType, rates: new Set(), totalQty: 0, totalAmount: 0 };
+          equipment[key] = {
+            name: l.name,
+            jobType: l.jobType,
+            rates: new Set(),
+            totalQty: 0,
+            totalAmount: 0,
+            taxYes: 0,
+            taxNo: 0,
+          };
         }
         const eq = equipment[key];
         if (l.rate) eq.rates.add(l.rate);
         eq.totalQty += l.qty;
         eq.totalAmount += l.amount;
+        if (l.taxInvoice) eq.taxYes += 1;
+        else eq.taxNo += 1;
       } else {
-        row.materialCost += l.amount;
+        const bucket = l.type === "자재" ? materials : freight;
+        if (l.type === "자재") row.materialCost += l.amount;
+        else row.freightCost += l.amount;
 
         const key = `${l.name}||${l.vendor}`;
-        if (!materials[key]) {
-          materials[key] = { name: l.name, vendor: l.vendor, totalAmount: 0, taxYes: 0, taxNo: 0 };
+        if (!bucket[key]) {
+          bucket[key] = { name: l.name, vendor: l.vendor, totalAmount: 0, taxYes: 0, taxNo: 0 };
         }
-        const mat = materials[key];
-        mat.totalAmount += l.amount;
-        if (l.taxInvoice) mat.taxYes += 1;
-        else mat.taxNo += 1;
+        const v = bucket[key];
+        v.totalAmount += l.amount;
+        if (l.taxInvoice) v.taxYes += 1;
+        else v.taxNo += 1;
       }
     });
   });
 
   const rows: (string | number)[][] = [
     [`집계 범위: ${scopeLabel}${month ? " · " + month : " · 전체기간"}`],
-    ["현장명", "장비 공수", "장비 비용(원)", "자재대(원)", "합계 비용(원)"],
+    ["현장명", "장비 공수", "장비 비용(원)", "자재대(원)", "운반비(원)", "합계 비용(원)"],
   ];
 
   const grand = emptyRow("");
   Object.values(byProject)
     .sort((a, b) => a.name.localeCompare(b.name))
     .forEach((r) => {
-      rows.push([r.name, r.eGongsu, r.eCost, r.materialCost, rowTotal(r)]);
+      rows.push([r.name, r.eGongsu, r.eCost, r.materialCost, r.freightCost, rowTotal(r)]);
       grand.eGongsu += r.eGongsu;
       grand.eCost += r.eCost;
       grand.materialCost += r.materialCost;
+      grand.freightCost += r.freightCost;
     });
 
-  rows.push(["총 합계", grand.eGongsu, grand.eCost, grand.materialCost, rowTotal(grand)]);
+  rows.push(["총 합계", grand.eGongsu, grand.eCost, grand.materialCost, grand.freightCost, rowTotal(grand)]);
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [{ wch: 26 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+  ws["!cols"] = [{ wch: 26 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
 
   const equipRows: (string | number)[][] = [
     [`집계 범위: ${scopeLabel}${month ? " · " + month : " · 전체기간"}`],
-    ["장비명", "이름", "단가", "공수", "합계금액(원)"],
+    ["장비명", "이름", "단가", "공수", "합계금액(원)", "세금계산서"],
   ];
   let eqTotalQty = 0;
   let eqTotalAmount = 0;
@@ -122,41 +163,23 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => a.name.localeCompare(b.name))
     .forEach((eq) => {
       const rateLabel = eq.rates.size === 1 ? Array.from(eq.rates)[0] : Array.from(eq.rates).join(" / ");
-      equipRows.push([eq.name, eq.jobType, rateLabel, eq.totalQty, eq.totalAmount]);
+      equipRows.push([eq.name, eq.jobType, rateLabel, eq.totalQty, eq.totalAmount, taxLabel(eq.taxYes, eq.taxNo)]);
       eqTotalQty += eq.totalQty;
       eqTotalAmount += eq.totalAmount;
     });
-  equipRows.push(["총 합계", "", "", eqTotalQty, eqTotalAmount]);
+  equipRows.push(["총 합계", "", "", eqTotalQty, eqTotalAmount, ""]);
 
   const wsEquip = XLSX.utils.aoa_to_sheet(equipRows);
-  wsEquip["!cols"] = [{ wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 14 }];
+  wsEquip["!cols"] = [{ wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 20 }];
 
-  const materialRows: (string | number)[][] = [
-    [`집계 범위: ${scopeLabel}${month ? " · " + month : " · 전체기간"}`],
-    ["자재명", "업체명", "금액 합계(원)", "세금계산서"],
-  ];
-  let matTotalAmount = 0;
-  Object.values(materials)
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .forEach((mat) => {
-      const taxLabel =
-        mat.taxYes > 0 && mat.taxNo > 0
-          ? `발행 ${mat.taxYes}건 / 미발행 ${mat.taxNo}건`
-          : mat.taxYes > 0
-          ? "발행"
-          : "미발행";
-      materialRows.push([mat.name, mat.vendor, mat.totalAmount, taxLabel]);
-      matTotalAmount += mat.totalAmount;
-    });
-  materialRows.push(["총 합계", "", matTotalAmount, ""]);
-
-  const wsMaterial = XLSX.utils.aoa_to_sheet(materialRows);
-  wsMaterial["!cols"] = [{ wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 20 }];
+  const wsMaterial = buildVendorSheet(scopeLabel, month, "자재명", materials);
+  const wsFreight = buildVendorSheet(scopeLabel, month, "운반비 항목", freight);
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "장비자재집계");
   XLSX.utils.book_append_sheet(wb, wsEquip, "장비상세");
   XLSX.utils.book_append_sheet(wb, wsMaterial, "자재상세");
+  XLSX.utils.book_append_sheet(wb, wsFreight, "운반비상세");
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
   const today = new Date().toISOString().slice(0, 10);

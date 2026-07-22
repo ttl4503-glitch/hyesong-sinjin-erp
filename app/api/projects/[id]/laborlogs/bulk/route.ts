@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         date: e.date || "",
         note: String(e.note || "").trim(),
         vendor: String(e.vendor || "").trim(),
-        taxInvoice: type === "자재" || type === "운반비" || type === "잡자재" ? Boolean(e.taxInvoice) : false,
+        taxInvoice: type === "장비" || type === "자재" || type === "운반비" || type === "잡자재" ? Boolean(e.taxInvoice) : false,
         workItemId: e.workItemId || null,
       };
     })

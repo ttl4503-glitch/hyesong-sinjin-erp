@@ -21,7 +21,7 @@ import { compressImage } from "@/lib/compressImage";
 import { extractReceiptAmount } from "@/lib/receiptOcr";
 
 const RECEIPT_TYPES = ["장비", "자재", "식대", "참", "운반비", "잡자재"];
-const TAX_INVOICE_TYPES = ["자재", "운반비", "잡자재"];
+const TAX_INVOICE_TYPES = ["장비", "자재", "운반비", "잡자재"];
 const VENDOR_TYPES = ["자재", "식대", "운반비", "잡자재"];
 // Types whose amount can be OCR-auto-filled from a receipt photo (equipment
 // cost is already computed from 공수×단가, so it's excluded).
@@ -1151,17 +1151,27 @@ export default function ProjectSheet({
                             </select>
                           )}
                           {type === "장비" && (
-                            <span
-                              className="wi-upload-btn"
-                              style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
-                              onClick={() => triggerDailyReceipt(r._key)}
-                            >
-                              {dailyOcrBusyKey === r._key
-                                ? "처리 중..."
-                                : r.pendingReceipt
-                                ? "🧾 세금계산서 첨부됨"
-                                : "🧾 세금계산서 찍기"}
-                            </span>
+                            <>
+                              <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
+                                <input
+                                  type="checkbox"
+                                  checked={r.taxInvoice}
+                                  onChange={(e) => updateDailyRow(r._key, "taxInvoice", e.target.checked)}
+                                />
+                                계산서
+                              </label>
+                              <span
+                                className="wi-upload-btn"
+                                style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+                                onClick={() => triggerDailyReceipt(r._key)}
+                              >
+                                {dailyOcrBusyKey === r._key
+                                  ? "처리 중..."
+                                  : r.pendingReceipt
+                                  ? "🧾 세금계산서 첨부됨"
+                                  : "🧾 세금계산서 찍기"}
+                              </span>
+                            </>
                           )}
                         </div>
                       </div>
