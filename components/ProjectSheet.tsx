@@ -1159,107 +1159,119 @@ export default function ProjectSheet({
                 );
               })}
 
-              <div style={{ marginTop: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--sinjin)", marginBottom: 6 }}>
-                  자재·식대·운반비
-                </div>
-                {dailyRows
-                  .filter((r) => OCR_AMOUNT_TYPES.includes(r.type))
-                  .map((r) => (
-                    <div className="wi-edit-row" key={r._key}>
-                      <div className="wi-edit-row-top">
-                        <select
-                          style={{ maxWidth: 80 }}
-                          value={r.type}
-                          onChange={(e) => updateDailyRow(r._key, "type", e.target.value)}
-                        >
-                          <option value="자재">자재대</option>
-                          <option value="식대">식대</option>
-                          <option value="참">참</option>
-                          <option value="운반비">운반비</option>
-                          <option value="잡자재">잡자재비</option>
-                        </select>
-                        <input
-                          className="wi-edit-name"
-                          type="text"
-                          list={`lg_name_options_${r.type}`}
-                          placeholder="품목"
-                          value={r.name}
-                          onChange={(e) => updateDailyRow(r._key, "name", e.target.value)}
-                        />
-                        <div className="lg-del" onClick={() => removeDailyRow(r._key)}>
-                          ✕
+              {[
+                { title: "자재", types: ["자재"], addLabel: "+ 자재 추가", addType: "자재", showTypeSelect: false },
+                { title: "운반비", types: ["운반비"], addLabel: "+ 운반비 추가", addType: "운반비", showTypeSelect: false },
+                {
+                  title: "식대·참·잡자재",
+                  types: ["식대", "참", "잡자재"],
+                  addLabel: "+ 식대/참/잡자재 추가",
+                  addType: "식대",
+                  showTypeSelect: true,
+                },
+              ].map((section) => (
+                <div style={{ marginTop: 10 }} key={section.title}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--sinjin)", marginBottom: 6 }}>
+                    {section.title}
+                  </div>
+                  {dailyRows
+                    .filter((r) => section.types.includes(r.type))
+                    .map((r) => (
+                      <div className="wi-edit-row" key={r._key}>
+                        <div className="wi-edit-row-top">
+                          {section.showTypeSelect && (
+                            <select
+                              style={{ maxWidth: 80 }}
+                              value={r.type}
+                              onChange={(e) => updateDailyRow(r._key, "type", e.target.value)}
+                            >
+                              <option value="식대">식대</option>
+                              <option value="참">참</option>
+                              <option value="잡자재">잡자재비</option>
+                            </select>
+                          )}
+                          <input
+                            className="wi-edit-name"
+                            type="text"
+                            list={`lg_name_options_${r.type}`}
+                            placeholder="품목"
+                            value={r.name}
+                            onChange={(e) => updateDailyRow(r._key, "name", e.target.value)}
+                          />
+                          <div className="lg-del" onClick={() => removeDailyRow(r._key)}>
+                            ✕
+                          </div>
                         </div>
-                      </div>
-                      <div className="wi-edit-row-fields">
-                        <input
-                          type="text"
-                          placeholder="규격/단위"
-                          value={r.unit}
-                          onChange={(e) => updateDailyRow(r._key, "unit", e.target.value)}
-                        />
-                        <input
-                          type="number"
-                          placeholder="수량"
-                          value={r.qty || ""}
-                          onChange={(e) => updateDailyRow(r._key, "qty", e.target.value)}
-                        />
-                        <input
-                          type="number"
-                          placeholder="금액"
-                          value={r.amount || ""}
-                          onChange={(e) => updateDailyRow(r._key, "amount", e.target.value)}
-                        />
-                        {VENDOR_TYPES.includes(r.type) && (
+                        <div className="wi-edit-row-fields">
                           <input
                             type="text"
-                            placeholder="업체명"
-                            value={r.vendor}
-                            onChange={(e) => updateDailyRow(r._key, "vendor", e.target.value)}
+                            placeholder="규격/단위"
+                            value={r.unit}
+                            onChange={(e) => updateDailyRow(r._key, "unit", e.target.value)}
                           />
-                        )}
-                        {selectableWorkItems.length > 0 && (
-                          <select
-                            value={r.workItemId}
-                            onChange={(e) => updateDailyRow(r._key, "workItemId", e.target.value)}
-                          >
-                            <option value="">공종 선택안함</option>
-                            {selectableWorkItems.map((w) => (
-                              <option key={w.id} value={w.id}>
-                                {w.name}
-                                {w.spec ? ` (${w.spec})` : ""} · 예산 {formatWon(w.amount)}원
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        {TAX_INVOICE_TYPES.includes(r.type) && (
-                          <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
+                          <input
+                            type="number"
+                            placeholder="수량"
+                            value={r.qty || ""}
+                            onChange={(e) => updateDailyRow(r._key, "qty", e.target.value)}
+                          />
+                          <input
+                            type="number"
+                            placeholder="금액"
+                            value={r.amount || ""}
+                            onChange={(e) => updateDailyRow(r._key, "amount", e.target.value)}
+                          />
+                          {VENDOR_TYPES.includes(r.type) && (
                             <input
-                              type="checkbox"
-                              checked={r.taxInvoice}
-                              onChange={(e) => updateDailyRow(r._key, "taxInvoice", e.target.checked)}
+                              type="text"
+                              placeholder="업체명"
+                              value={r.vendor}
+                              onChange={(e) => updateDailyRow(r._key, "vendor", e.target.value)}
                             />
-                            계산서
-                          </label>
-                        )}
-                        <span
-                          className="wi-upload-btn"
-                          style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
-                          onClick={() => triggerDailyReceipt(r._key)}
-                        >
-                          {dailyOcrBusyKey === r._key
-                            ? "인식 중..."
-                            : r.pendingReceipt
-                            ? "📷 사진 첨부됨"
-                            : "📷 영수증 찍기"}
-                        </span>
+                          )}
+                          {selectableWorkItems.length > 0 && (
+                            <select
+                              value={r.workItemId}
+                              onChange={(e) => updateDailyRow(r._key, "workItemId", e.target.value)}
+                            >
+                              <option value="">공종 선택안함</option>
+                              {selectableWorkItems.map((w) => (
+                                <option key={w.id} value={w.id}>
+                                  {w.name}
+                                  {w.spec ? ` (${w.spec})` : ""} · 예산 {formatWon(w.amount)}원
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {TAX_INVOICE_TYPES.includes(r.type) && (
+                            <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
+                              <input
+                                type="checkbox"
+                                checked={r.taxInvoice}
+                                onChange={(e) => updateDailyRow(r._key, "taxInvoice", e.target.checked)}
+                              />
+                              계산서
+                            </label>
+                          )}
+                          <span
+                            className="wi-upload-btn"
+                            style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+                            onClick={() => triggerDailyReceipt(r._key)}
+                          >
+                            {dailyOcrBusyKey === r._key
+                              ? "인식 중..."
+                              : r.pendingReceipt
+                              ? "📷 사진 첨부됨"
+                              : "📷 영수증 찍기"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                <button className="wi-upload-btn" onClick={() => addDailyRow("자재")}>
-                  + 자재/식대/운반비 추가
-                </button>
-              </div>
+                    ))}
+                  <button className="wi-upload-btn" onClick={() => addDailyRow(section.addType)}>
+                    {section.addLabel}
+                  </button>
+                </div>
+              ))}
 
               {dailyError && <div className="login-error" style={{ marginTop: 10 }}>{dailyError}</div>}
 

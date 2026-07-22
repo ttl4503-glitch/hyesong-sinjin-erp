@@ -25,6 +25,14 @@ interface EquipAgg {
   totalAmount: number;
 }
 
+interface MaterialAgg {
+  name: string;
+  vendor: string;
+  totalAmount: number;
+  taxYes: number;
+  taxNo: number;
+}
+
 // 장비·자재 집계 — 인력은 노무비 신고용 집계에서 따로 다루므로 여기서는
 // 장비 사용료와 자재대만 뽑는다. month가 주어지면 그 달만, 없으면 전체 기간.
 export async function GET(req: NextRequest) {
@@ -47,6 +55,7 @@ export async function GET(req: NextRequest) {
 
   const byProject: Record<string, Row> = {};
   const equipment: Record<string, EquipAgg> = {};
+  const materials: Record<string, MaterialAgg> = {};
 
   projects.forEach((p) => {
     p.laborLogs.forEach((l) => {
@@ -69,6 +78,15 @@ export async function GET(req: NextRequest) {
         eq.totalAmount += l.amount;
       } else {
         row.materialCost += l.amount;
+
+        const key = `${l.name}||${l.vendor}`;
+        if (!materials[key]) {
+          materials[key] = { name: l.name, vendor: l.vendor, totalAmount: 0, taxYes: 0, taxNo: 0 };
+        }
+        const mat = materials[key];
+        mat.totalAmount += l.amount;
+        if (l.taxInvoice) mat.taxYes += 1;
+        else mat.taxNo += 1;
       }
     });
   });
@@ -112,9 +130,32 @@ export async function GET(req: NextRequest) {
   const wsEquip = XLSX.utils.aoa_to_sheet(equipRows);
   wsEquip["!cols"] = [{ wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 14 }];
 
+  const materialRows: (string | number)[][] = [
+    [`집계 범위: ${scopeLabel}${month ? " · " + month : " · 전체기간"}`],
+    ["자재명", "업체명", "금액 합계(원)", "세금계산서"],
+  ];
+  let matTotalAmount = 0;
+  Object.values(materials)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .forEach((mat) => {
+      const taxLabel =
+        mat.taxYes > 0 && mat.taxNo > 0
+          ? `발행 ${mat.taxYes}건 / 미발행 ${mat.taxNo}건`
+          : mat.taxYes > 0
+          ? "발행"
+          : "미발행";
+      materialRows.push([mat.name, mat.vendor, mat.totalAmount, taxLabel]);
+      matTotalAmount += mat.totalAmount;
+    });
+  materialRows.push(["총 합계", "", matTotalAmount, ""]);
+
+  const wsMaterial = XLSX.utils.aoa_to_sheet(materialRows);
+  wsMaterial["!cols"] = [{ wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 20 }];
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "장비자재집계");
   XLSX.utils.book_append_sheet(wb, wsEquip, "장비상세");
+  XLSX.utils.book_append_sheet(wb, wsMaterial, "자재상세");
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
   const today = new Date().toISOString().slice(0, 10);
