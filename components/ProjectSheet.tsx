@@ -701,7 +701,20 @@ export default function ProjectSheet({
     <div className="overlay open">
       <div className="sheet">
         <div className="sheet-handle" />
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            position: "sticky",
+            top: -20,
+            zIndex: 5,
+            background: "var(--paper)",
+            margin: "-20px -18px 14px -18px",
+            padding: "12px 18px",
+            borderBottom: "1px solid var(--line)",
+          }}
+        >
           <h2 style={{ margin: 0 }}>{isEdit ? "공사 상세" : "새 공사 등록"}</h2>
           <button
             type="button"
