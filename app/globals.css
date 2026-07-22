@@ -8,6 +8,8 @@
   --hyesong-bg:#f6e3d1;
   --sinjin:#4f7a52;
   --sinjin-bg:#dfe9dd;
+  --narin:#3b6e8f;
+  --narin-bg:#dbe7ee;
   --danger:#b83b3b;
   --line:#c9c2ad;
   --mono: 'Roboto Mono', 'Courier New', monospace;
@@ -45,6 +47,7 @@ html, body{
 }
 .tab.active{color:#fff; border-bottom-color:var(--hyesong);}
 .tab[data-c="신진조경"].active{border-bottom-color:var(--sinjin);}
+.tab[data-c="나린산업"].active{border-bottom-color:var(--narin);}
 
 /* Dashboard */
 .dash{
@@ -89,6 +92,7 @@ html, body{
 }
 .tag.hyesong{background:var(--hyesong-bg); color:var(--hyesong);}
 .tag.sinjin{background:var(--sinjin-bg); color:var(--sinjin);}
+.tag.narin{background:var(--narin-bg); color:var(--narin);}
 
 /* gauge / ruler progress bar - signature element */
 .gauge{margin-top:12px;}

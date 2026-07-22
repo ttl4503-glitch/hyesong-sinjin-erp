@@ -11,7 +11,8 @@ export default function ProjectCard({
   const progressVal = computeProgress(project);
   const over = progressVal > 100;
   const late = !project.completed && dleft !== null && dleft < 0 && progressVal < 100;
-  const tagClass = project.company === "혜송산업개발" ? "hyesong" : "sinjin";
+  const tagClass =
+    project.company === "혜송산업개발" ? "hyesong" : project.company === "신진조경" ? "sinjin" : "narin";
 
   let ddayText = "-";
   if (dleft !== null) {

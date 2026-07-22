@@ -1,4 +1,4 @@
-export const COMPANIES = ["혜송산업개발", "신진조경"];
+export const COMPANIES = ["혜송산업개발", "신진조경", "나린산업"];
 
 export interface Worker {
   id: string;
