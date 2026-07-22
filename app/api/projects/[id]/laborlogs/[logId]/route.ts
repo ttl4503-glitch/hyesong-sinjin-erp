@@ -16,7 +16,7 @@ export async function PATCH(
     where: { id: params.logId },
     data: {
       type,
-      jobType: type === "인력" ? String(body.jobType || "").trim() : "",
+      jobType: (type === "인력" || type === "장비") ? String(body.jobType || "").trim() : "",
       name: String(body.name || "").trim(),
       qty,
       unit: String(body.unit || "").trim(),

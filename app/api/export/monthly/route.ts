@@ -17,6 +17,14 @@ function rowTotal(r: Row) {
   return r.eCost + r.materialCost;
 }
 
+interface EquipAgg {
+  name: string;
+  jobType: string;
+  rates: Set<number>;
+  totalQty: number;
+  totalAmount: number;
+}
+
 // 장비·자재 집계 — 인력은 노무비 신고용 집계에서 따로 다루므로 여기서는
 // 장비 사용료와 자재대만 뽑는다. month가 주어지면 그 달만, 없으면 전체 기간.
 export async function GET(req: NextRequest) {
@@ -38,6 +46,7 @@ export async function GET(req: NextRequest) {
   }
 
   const byProject: Record<string, Row> = {};
+  const equipment: Record<string, EquipAgg> = {};
 
   projects.forEach((p) => {
     p.laborLogs.forEach((l) => {
@@ -49,6 +58,15 @@ export async function GET(req: NextRequest) {
       if (l.type === "장비") {
         row.eGongsu += l.qty;
         row.eCost += l.amount;
+
+        const key = `${l.name}||${l.jobType}`;
+        if (!equipment[key]) {
+          equipment[key] = { name: l.name, jobType: l.jobType, rates: new Set(), totalQty: 0, totalAmount: 0 };
+        }
+        const eq = equipment[key];
+        if (l.rate) eq.rates.add(l.rate);
+        eq.totalQty += l.qty;
+        eq.totalAmount += l.amount;
       } else {
         row.materialCost += l.amount;
       }
@@ -74,8 +92,29 @@ export async function GET(req: NextRequest) {
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
   ws["!cols"] = [{ wch: 26 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+
+  const equipRows: (string | number)[][] = [
+    [`집계 범위: ${scopeLabel}${month ? " · " + month : " · 전체기간"}`],
+    ["장비명", "이름", "단가", "공수", "합계금액(원)"],
+  ];
+  let eqTotalQty = 0;
+  let eqTotalAmount = 0;
+  Object.values(equipment)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .forEach((eq) => {
+      const rateLabel = eq.rates.size === 1 ? Array.from(eq.rates)[0] : Array.from(eq.rates).join(" / ");
+      equipRows.push([eq.name, eq.jobType, rateLabel, eq.totalQty, eq.totalAmount]);
+      eqTotalQty += eq.totalQty;
+      eqTotalAmount += eq.totalAmount;
+    });
+  equipRows.push(["총 합계", "", "", eqTotalQty, eqTotalAmount]);
+
+  const wsEquip = XLSX.utils.aoa_to_sheet(equipRows);
+  wsEquip["!cols"] = [{ wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 14 }];
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "장비자재집계");
+  XLSX.utils.book_append_sheet(wb, wsEquip, "장비상세");
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
   const today = new Date().toISOString().slice(0, 10);

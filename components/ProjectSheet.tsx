@@ -355,7 +355,7 @@ export default function ProjectSheet({
       ...f,
       type,
       unit: DEFAULT_UNIT[type] || "",
-      jobType: type === "인력" ? f.jobType : "",
+      jobType: isLaborType ? f.jobType : "",
       amount: isLaborType ? f.amount : f.amount,
     }));
   }
@@ -1095,6 +1095,14 @@ export default function ProjectSheet({
                               onChange={(e) => updateDailyRow(r._key, "jobType", e.target.value)}
                             />
                           )}
+                          {type === "장비" && (
+                            <input
+                              type="text"
+                              placeholder="이름 (운전자, 선택)"
+                              value={r.jobType}
+                              onChange={(e) => updateDailyRow(r._key, "jobType", e.target.value)}
+                            />
+                          )}
                           <input
                             type="number"
                             step={0.5}
@@ -1621,6 +1629,15 @@ export default function ProjectSheet({
                   type="text"
                   list="lg_jobtype_options"
                   placeholder="직종 (예: 조경공)"
+                  value={logForm.jobType}
+                  onChange={(e) => setLogForm({ ...logForm, jobType: e.target.value })}
+                />
+              )}
+              {logForm.type === "장비" && (
+                <input
+                  className="lg-jobtype-input"
+                  type="text"
+                  placeholder="이름 (운전자, 선택)"
                   value={logForm.jobType}
                   onChange={(e) => setLogForm({ ...logForm, jobType: e.target.value })}
                 />

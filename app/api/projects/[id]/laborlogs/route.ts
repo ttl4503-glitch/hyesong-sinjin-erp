@@ -23,7 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     data: {
       projectId: params.id,
       type,
-      jobType: type === "인력" ? String(body.jobType || "").trim() : "",
+      jobType: (type === "인력" || type === "장비") ? String(body.jobType || "").trim() : "",
       name: String(body.name).trim(),
       qty,
       unit: String(body.unit || "").trim(),
