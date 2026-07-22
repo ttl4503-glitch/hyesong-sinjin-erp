@@ -1111,16 +1111,22 @@ export default function ProjectSheet({
                             onChange={(e) => updateDailyRow(r._key, "qty", e.target.value)}
                           />
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             placeholder="단가"
-                            value={r.rate || ""}
-                            onChange={(e) => updateDailyRow(r._key, "rate", e.target.value)}
+                            value={r.rate ? Number(r.rate).toLocaleString("ko-KR") : ""}
+                            onChange={(e) =>
+                              updateDailyRow(r._key, "rate", e.target.value.replace(/[^0-9]/g, ""))
+                            }
                           />
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             placeholder="금액"
-                            value={r.amount || ""}
-                            onChange={(e) => updateDailyRow(r._key, "amount", e.target.value)}
+                            value={r.amount ? Number(r.amount).toLocaleString("ko-KR") : ""}
+                            onChange={(e) =>
+                              updateDailyRow(r._key, "amount", e.target.value.replace(/[^0-9]/g, ""))
+                            }
                           />
                           {selectableWorkItems.length > 0 && (
                             <select
@@ -1216,10 +1222,13 @@ export default function ProjectSheet({
                             onChange={(e) => updateDailyRow(r._key, "qty", e.target.value)}
                           />
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             placeholder="금액"
-                            value={r.amount || ""}
-                            onChange={(e) => updateDailyRow(r._key, "amount", e.target.value)}
+                            value={r.amount ? Number(r.amount).toLocaleString("ko-KR") : ""}
+                            onChange={(e) =>
+                              updateDailyRow(r._key, "amount", e.target.value.replace(/[^0-9]/g, ""))
+                            }
                           />
                           {VENDOR_TYPES.includes(r.type) && (
                             <input
