@@ -29,7 +29,7 @@ const OCR_AMOUNT_TYPES = ["자재", "식대", "참", "운반비", "잡자재"];
 // Types that get OCR-based auto amount recognition when a receipt photo is
 // attached. 식대/참 are excluded on purpose — the amount is entered by hand
 // and the photo is just kept as backup proof, not auto-read.
-const RECEIPT_OCR_TYPES = ["자재", "운반비"];
+const RECEIPT_OCR_TYPES: string[] = [];
 // 식대/참 rows only need a name and an amount — no unit/qty/vendor/공종.
 const SIMPLE_AMOUNT_TYPES = ["식대", "참"];
 
