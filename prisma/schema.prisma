@@ -29,6 +29,16 @@ model Project {
   dailyNotes DailyNote[]
 }
 
+model AppUser {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  pin        String   @default("") // 4자리 숫자 로그인 비밀번호
+  isAdmin    Boolean  @default(false)
+  projectIds String[] @default([]) // 담당 현장(Project) id 목록 — 관리자는 무시하고 전체 접근
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
 model Worker {
   id        String   @id @default(cuid())
   name      String   @unique

@@ -6,10 +6,12 @@ import { COMPANIES, Project, todayStr } from "@/lib/erp";
 import Link from "next/link";
 import ProjectCard from "@/components/ProjectCard";
 import ProjectSheet from "@/components/ProjectSheet";
+import { useAuth } from "@/components/AuthProvider";
 
 type SheetState = { mode: "add" } | { mode: "edit"; projectId: string } | null;
 
 export default function HomePage() {
+  const { user, logout } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState(COMPANIES[0]);
@@ -23,8 +25,48 @@ export default function HomePage() {
   const [monthlyScope, setMonthlyScope] = useState<"all" | "company" | "project">("all");
   const [monthlyCompany, setMonthlyCompany] = useState(COMPANIES[0]);
   const [monthlyProjectId, setMonthlyProjectId] = useState("");
+  const [showPwForm, setShowPwForm] = useState(false);
+  const [pwCurrent, setPwCurrent] = useState("");
+  const [pwNew, setPwNew] = useState("");
+  const [pwNew2, setPwNew2] = useState("");
+  const [pwError, setPwError] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwSuccess, setPwSuccess] = useState(false);
+
+  async function handleChangePassword() {
+    setPwError("");
+    if (!/^\d{4}$/.test(pwCurrent)) {
+      setPwError("현재 비밀번호를 입력해주세요.");
+      return;
+    }
+    if (!/^\d{4}$/.test(pwNew)) {
+      setPwError("새 비밀번호는 숫자 4자리예요.");
+      return;
+    }
+    if (pwNew !== pwNew2) {
+      setPwError("새 비밀번호가 서로 달라요.");
+      return;
+    }
+    setPwBusy(true);
+    try {
+      await api.changePassword(user.id, pwCurrent, pwNew);
+      setPwSuccess(true);
+      setPwCurrent("");
+      setPwNew("");
+      setPwNew2("");
+      setTimeout(() => {
+        setPwSuccess(false);
+        setShowPwForm(false);
+      }, 1500);
+    } catch (e: any) {
+      setPwError(e.message || "변경 중 오류가 발생했어요.");
+    } finally {
+      setPwBusy(false);
+    }
+  }
 
   useEffect(() => {
+    // 서버가 로그인 사용자 권한에 따라 담당 현장만 내려줍니다 (관리자는 전체).
     api
       .listProjects()
       .then(setProjects)
@@ -145,221 +187,325 @@ export default function HomePage() {
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 11, color: "#8fb9c9", padding: "6px 0 10px 0" }}>
-          ⚠️ 이 화면을 여는 모든 사람이 같은 데이터를 함께 보고 수정해요
-        </div>
-      </div>
-
-      <div style={{ padding: "10px 16px 0 16px", display: "flex", gap: 6 }}>
-        <input
-          type="month"
-          value={monthlyMonth}
-          onChange={(e) => setMonthlyMonth(e.target.value)}
+        <div
           style={{
-            flex: "0 0 110px",
-            padding: "0 8px",
-            border: "1px solid var(--line)",
-            borderRadius: 6,
-            fontSize: 13,
-            background: "#fff",
-            color: "var(--ink)",
-          }}
-        />
-        <select
-          value={monthlyScope}
-          onChange={(e) => {
-            const v = e.target.value as "all" | "company" | "project";
-            setMonthlyScope(v);
-            if (v === "project" && !monthlyProjectId && allProjectsSorted.length > 0) {
-              setMonthlyProjectId(allProjectsSorted[0].id);
-            }
-          }}
-          style={{
-            flex: 1,
-            padding: "0 8px",
-            border: "1px solid var(--line)",
-            borderRadius: 6,
-            fontSize: 13,
-            background: "#fff",
-            color: "var(--ink)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "6px 0 10px 0",
+            fontSize: 12,
+            color: "#8fb9c9",
           }}
         >
-          <option value="all">전체집계 ({allCompaniesLabel})</option>
-          <option value="company">회사별 집계</option>
-          <option value="project">현장별 집계</option>
-        </select>
-      </div>
-
-      {monthlyScope === "company" && (
-        <div style={{ padding: "8px 16px 0 16px" }}>
-          <select
-            value={monthlyCompany}
-            onChange={(e) => setMonthlyCompany(e.target.value)}
+          <span>
+            {user.name} 님 · {user.isAdmin ? "관리자" : "현장 담당"}
+          </span>
+          <span style={{ display: "flex", gap: 10 }}>
+            {user.isAdmin && (
+              <Link href="/users" style={{ color: "#8fb9c9", textDecoration: "underline" }}>
+                사용자·권한 관리
+              </Link>
+            )}
+            <span
+              onClick={() => {
+                setShowPwForm((v) => !v);
+                setPwError("");
+                setPwSuccess(false);
+              }}
+              style={{ cursor: "pointer", textDecoration: "underline" }}
+            >
+              비밀번호 변경
+            </span>
+            <span
+              onClick={logout}
+              style={{ cursor: "pointer", textDecoration: "underline" }}
+            >
+              로그아웃
+            </span>
+          </span>
+        </div>
+        {showPwForm && (
+          <div
             style={{
-              width: "100%",
-              padding: "8px",
-              border: "1px solid var(--line)",
-              borderRadius: 6,
-              fontSize: 13,
               background: "#fff",
-              color: "var(--ink)",
+              border: "1px solid var(--line)",
+              borderRadius: 8,
+              padding: 12,
+              marginBottom: 10,
             }}
           >
-            {COMPANIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {monthlyScope === "project" && (
-        <div style={{ padding: "8px 16px 0 16px" }}>
-          <select
-            value={monthlyProjectId}
-            onChange={(e) => setMonthlyProjectId(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "8px",
-              border: "1px solid var(--line)",
-              borderRadius: 6,
-              fontSize: 13,
-              background: "#fff",
-              color: "var(--ink)",
-            }}
-          >
-            {allProjectsSorted.map((p) => (
-              <option key={p.id} value={p.id}>
-                [{p.company}] {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div style={{ padding: "8px 16px 0 16px" }}>
-        <a
-          className="export-btn"
-          style={{ padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
-          href={monthlyReportHref}
-        >
-          {monthlyReportLabel}
-        </a>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", marginBottom: 8 }}>
+              비밀번호 변경
+            </div>
+            {pwError && (
+              <div className="login-error" style={{ marginBottom: 8 }}>
+                {pwError}
+              </div>
+            )}
+            {pwSuccess ? (
+              <div style={{ fontSize: 13, color: "var(--sinjin)" }}>✓ 비밀번호가 변경됐어요.</div>
+            ) : (
+              <>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="현재 비밀번호 (4자리)"
+                  value={pwCurrent}
+                  onChange={(e) => setPwCurrent(e.target.value.replace(/[^0-9]/g, ""))}
+                  style={{ width: "100%", padding: "8px 10px", marginBottom: 6, fontSize: 14 }}
+                />
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="새 비밀번호 (4자리)"
+                  value={pwNew}
+                  onChange={(e) => setPwNew(e.target.value.replace(/[^0-9]/g, ""))}
+                  style={{ width: "100%", padding: "8px 10px", marginBottom: 6, fontSize: 14 }}
+                />
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="새 비밀번호 확인"
+                  value={pwNew2}
+                  onChange={(e) => setPwNew2(e.target.value.replace(/[^0-9]/g, ""))}
+                  style={{ width: "100%", padding: "8px 10px", marginBottom: 8, fontSize: 14 }}
+                />
+                <button className="btn-primary" onClick={handleChangePassword} disabled={pwBusy} style={{ marginTop: 0 }}>
+                  {pwBusy ? "변경 중..." : "변경하기"}
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
-      <div style={{ padding: "8px 16px 0 16px", display: "flex", gap: 6 }}>
-        <input
-          type="month"
-          value={reportMonth}
-          onChange={(e) => setReportMonth(e.target.value)}
-          style={{
-            flex: "0 0 110px",
-            padding: "0 8px",
-            border: "1px solid var(--line)",
-            borderRadius: 6,
-            fontSize: 13,
-            background: "#fff",
-            color: "var(--ink)",
-          }}
-        />
-        <select
-          value={laborScope}
-          onChange={(e) => {
-            const v = e.target.value as "all" | "company" | "project";
-            setLaborScope(v);
-            if (v === "project" && !laborProjectId && allProjectsSorted.length > 0) {
-              setLaborProjectId(allProjectsSorted[0].id);
-            }
-          }}
-          style={{
-            flex: 1,
-            padding: "0 8px",
-            border: "1px solid var(--line)",
-            borderRadius: 6,
-            fontSize: 13,
-            background: "#fff",
-            color: "var(--ink)",
-          }}
-        >
-          <option value="all">전체집계 ({allCompaniesLabel})</option>
-          <option value="company">회사별 집계</option>
-          <option value="project">현장별 집계</option>
-        </select>
-      </div>
+      {user.isAdmin && (
+        <>
+          <div style={{ padding: "10px 16px 0 16px", display: "flex", gap: 6 }}>
+            <input
+              type="month"
+              value={monthlyMonth}
+              onChange={(e) => setMonthlyMonth(e.target.value)}
+              style={{
+                flex: "0 0 110px",
+                padding: "0 8px",
+                border: "1px solid var(--line)",
+                borderRadius: 6,
+                fontSize: 13,
+                background: "#fff",
+                color: "var(--ink)",
+              }}
+            />
+            <select
+              value={monthlyScope}
+              onChange={(e) => {
+                const v = e.target.value as "all" | "company" | "project";
+                setMonthlyScope(v);
+                if (v === "project" && !monthlyProjectId && allProjectsSorted.length > 0) {
+                  setMonthlyProjectId(allProjectsSorted[0].id);
+                }
+              }}
+              style={{
+                flex: 1,
+                padding: "0 8px",
+                border: "1px solid var(--line)",
+                borderRadius: 6,
+                fontSize: 13,
+                background: "#fff",
+                color: "var(--ink)",
+              }}
+            >
+              <option value="all">전체집계 ({allCompaniesLabel})</option>
+              <option value="company">회사별 집계</option>
+              <option value="project">현장별 집계</option>
+            </select>
+          </div>
 
-      {laborScope === "company" && (
-        <div style={{ padding: "8px 16px 0 16px" }}>
-          <select
-            value={laborCompany}
-            onChange={(e) => setLaborCompany(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "8px",
-              border: "1px solid var(--line)",
-              borderRadius: 6,
-              fontSize: 13,
-              background: "#fff",
-              color: "var(--ink)",
-            }}
-          >
-            {COMPANIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
+          {monthlyScope === "company" && (
+            <div style={{ padding: "8px 16px 0 16px" }}>
+              <select
+                value={monthlyCompany}
+                onChange={(e) => setMonthlyCompany(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid var(--line)",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  background: "#fff",
+                  color: "var(--ink)",
+                }}
+              >
+                {COMPANIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {monthlyScope === "project" && (
+            <div style={{ padding: "8px 16px 0 16px" }}>
+              <select
+                value={monthlyProjectId}
+                onChange={(e) => setMonthlyProjectId(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid var(--line)",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  background: "#fff",
+                  color: "var(--ink)",
+                }}
+              >
+                {allProjectsSorted.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    [{p.company}] {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div style={{ padding: "8px 16px 0 16px" }}>
+            <a
+              className="export-btn"
+              style={{ padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
+              href={monthlyReportHref}
+            >
+              {monthlyReportLabel}
+            </a>
+          </div>
+
+          <div style={{ padding: "8px 16px 0 16px", display: "flex", gap: 6 }}>
+            <input
+              type="month"
+              value={reportMonth}
+              onChange={(e) => setReportMonth(e.target.value)}
+              style={{
+                flex: "0 0 110px",
+                padding: "0 8px",
+                border: "1px solid var(--line)",
+                borderRadius: 6,
+                fontSize: 13,
+                background: "#fff",
+                color: "var(--ink)",
+              }}
+            />
+            <select
+              value={laborScope}
+              onChange={(e) => {
+                const v = e.target.value as "all" | "company" | "project";
+                setLaborScope(v);
+                if (v === "project" && !laborProjectId && allProjectsSorted.length > 0) {
+                  setLaborProjectId(allProjectsSorted[0].id);
+                }
+              }}
+              style={{
+                flex: 1,
+                padding: "0 8px",
+                border: "1px solid var(--line)",
+                borderRadius: 6,
+                fontSize: 13,
+                background: "#fff",
+                color: "var(--ink)",
+              }}
+            >
+              <option value="all">전체집계 ({allCompaniesLabel})</option>
+              <option value="company">회사별 집계</option>
+              <option value="project">현장별 집계</option>
+            </select>
+          </div>
+
+          {laborScope === "company" && (
+            <div style={{ padding: "8px 16px 0 16px" }}>
+              <select
+                value={laborCompany}
+                onChange={(e) => setLaborCompany(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid var(--line)",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  background: "#fff",
+                  color: "var(--ink)",
+                }}
+              >
+                {COMPANIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {laborScope === "project" && (
+            <div style={{ padding: "8px 16px 0 16px" }}>
+              <select
+                value={laborProjectId}
+                onChange={(e) => setLaborProjectId(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid var(--line)",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  background: "#fff",
+                  color: "var(--ink)",
+                }}
+              >
+                {allProjectsSorted.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    [{p.company}] {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div style={{ padding: "8px 16px 0 16px" }}>
+            <a
+              className="export-btn"
+              style={{
+                padding: 10,
+                display: "block",
+                textAlign: "center",
+                textDecoration: "none",
+              }}
+              href={laborReportHref}
+            >
+              {laborReportLabel}
+            </a>
+          </div>
+
+          <div style={{ padding: "8px 16px 0 16px" }}>
+            <Link
+              href="/workers"
+              className="export-btn"
+              style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
+            >
+              👤 인원 명부 관리 (주민번호·계좌)
+            </Link>
+          </div>
+
+          <div style={{ padding: "8px 16px 0 16px" }}>
+            <Link
+              href="/users"
+              className="export-btn"
+              style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
+            >
+              👥 사용자·권한 관리
+            </Link>
+          </div>
+        </>
       )}
-
-      {laborScope === "project" && (
-        <div style={{ padding: "8px 16px 0 16px" }}>
-          <select
-            value={laborProjectId}
-            onChange={(e) => setLaborProjectId(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "8px",
-              border: "1px solid var(--line)",
-              borderRadius: 6,
-              fontSize: 13,
-              background: "#fff",
-              color: "var(--ink)",
-            }}
-          >
-            {allProjectsSorted.map((p) => (
-              <option key={p.id} value={p.id}>
-                [{p.company}] {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div style={{ padding: "8px 16px 0 16px" }}>
-        <a
-          className="export-btn"
-          style={{
-            padding: 10,
-            display: "block",
-            textAlign: "center",
-            textDecoration: "none",
-          }}
-          href={laborReportHref}
-        >
-          {laborReportLabel}
-        </a>
-      </div>
-
-      <div style={{ padding: "8px 16px 0 16px" }}>
-        <Link
-          href="/workers"
-          className="export-btn"
-          style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
-        >
-          👤 인원 명부 관리 (주민번호·계좌)
-        </Link>
-      </div>
 
       <div className="section-label">
         <span>진행 중인 공사</span>
@@ -369,9 +515,19 @@ export default function HomePage() {
       <div className="list">
         {sortedList.length === 0 ? (
           <div className="empty">
-            등록된 공사가 없어요.
-            <br />
-            아래 &apos;+ 공사 등록&apos; 버튼으로 추가해 보세요.
+            {user.isAdmin ? (
+              <>
+                등록된 공사가 없어요.
+                <br />
+                아래 &apos;+ 공사 등록&apos; 버튼으로 추가해 보세요.
+              </>
+            ) : (
+              <>
+                배정된 현장이 없어요.
+                <br />
+                관리자에게 담당 현장 배정을 요청하세요.
+              </>
+            )}
           </div>
         ) : (
           sortedList.map((p) => (
@@ -409,9 +565,11 @@ export default function HomePage() {
         </div>
       )}
 
-      <div className="fab">
-        <button onClick={() => setSheet({ mode: "add" })}>+ 공사 등록</button>
-      </div>
+      {user.isAdmin && (
+        <div className="fab">
+          <button onClick={() => setSheet({ mode: "add" })}>+ 공사 등록</button>
+        </div>
+      )}
 
       {sheet && (
         <ProjectSheet

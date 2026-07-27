@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getReqUser } from "@/lib/authServer";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // 로그인 사용자가 일반 직원이면 담당 현장만, 관리자(또는 헤더 없음)는 전체
+  const user = await getReqUser(req);
+  const where = user && !user.isAdmin ? { id: { in: user.projectIds } } : {};
   const projects = await prisma.project.findMany({
+    where,
     include: { milestones: true, laborLogs: { include: { receipt: { select: { id: true } } } }, workItems: true, dailyNotes: true },
     orderBy: { createdAt: "desc" },
   });

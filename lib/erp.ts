@@ -1,5 +1,12 @@
 export const COMPANIES = ["혜송산업개발", "신진조경", "나린산업"];
 
+export interface AppUser {
+  id: string;
+  name: string;
+  isAdmin: boolean;
+  projectIds: string[];
+}
+
 export interface Worker {
   id: string;
   name: string;
