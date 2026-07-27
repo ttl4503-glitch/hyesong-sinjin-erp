@@ -23,15 +23,7 @@ export default function ProjectCard({
     <div className="card" onClick={onClick}>
       <div className="card-top">
         <div>
-          <div className="card-title">
-            {project.name}{" "}
-            <span
-              className="gauge-pct"
-              style={{ fontSize: 14, color: over ? "var(--danger)" : "var(--blueprint)" }}
-            >
-              {progressVal}%
-            </span>
-          </div>
+          <div className="card-title">{project.name}</div>
           <div className="card-loc">{project.location || "위치 미입력"}</div>
         </div>
         <div className={`tag ${tagClass}`}>{project.company}</div>
@@ -60,8 +52,10 @@ export default function ProjectCard({
         </div>
       </div>
       <div className="status-row">
-        <span>누적 투입비용 {formatWon(totalInvestedCost(project))}원</span>
         <span>공사금액 {project.contractAmount ? formatWon(project.contractAmount) + "원" : "미입력"}</span>
+        <span style={{ color: over ? "var(--danger)" : undefined }}>
+          누적 투입비용 {formatWon(totalInvestedCost(project))}원 ({progressVal}%)
+        </span>
       </div>
     </div>
   );
