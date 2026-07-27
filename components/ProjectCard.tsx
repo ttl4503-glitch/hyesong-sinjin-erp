@@ -51,10 +51,11 @@ export default function ProjectCard({
           </div>
         </div>
       </div>
-      <div className="status-row">
+      <div className="status-row" style={{ justifyContent: "flex-start", gap: 6 }}>
         <span>공사금액 {project.contractAmount ? formatWon(project.contractAmount) + "원" : "미입력"}</span>
-        <span style={{ color: over ? "var(--danger)" : undefined }}>
-          누적 투입비용 {formatWon(totalInvestedCost(project))}원 ({progressVal}%)
+        <span>→</span>
+        <span style={{ color: over ? "var(--danger)" : undefined, fontWeight: 700 }}>
+          누적 투입 {formatWon(totalInvestedCost(project))}원 ({progressVal}%)
         </span>
       </div>
     </div>
