@@ -1180,36 +1180,39 @@ export default function ProjectSheet({
                           )}
                           {type === "장비" && (
                             <>
-                              <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
+                              <label style={{ display: "flex", alignItems: "center", gap: 2, fontSize: 11 }}>
                                 <input
                                   type="checkbox"
+                                  style={{ flex: "none", width: 15, height: 15, minWidth: 0, margin: 0 }}
                                   checked={r.taxInvoice}
                                   onChange={(e) => updateDailyRow(r._key, "taxInvoice", e.target.checked)}
                                 />
                                 세금계산서
                               </label>
-                              <span
-                                className="wi-upload-btn"
-                                style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
-                                onClick={() => triggerDailyReceipt(r._key)}
-                              >
-                                {dailyOcrBusyKey === r._key
-                                  ? "처리 중..."
-                                  : r.pendingReceipt
-                                  ? "📷 촬영됨"
-                                  : "📷 촬영"}
-                              </span>
-                              <span
-                                className="wi-upload-btn"
-                                style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
-                                onClick={() => triggerDailyGalleryUpload(r._key)}
-                              >
-                                {dailyOcrBusyKey === r._key
-                                  ? "처리 중..."
-                                  : r.pendingReceipt
-                                  ? "🖼 첨부됨"
-                                  : "🖼 사진 올리기"}
-                              </span>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
+                                <span
+                                  className="wi-upload-btn"
+                                  style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+                                  onClick={() => triggerDailyReceipt(r._key)}
+                                >
+                                  {dailyOcrBusyKey === r._key
+                                    ? "처리 중..."
+                                    : r.pendingReceipt
+                                    ? "📷 촬영됨"
+                                    : "📷 촬영"}
+                                </span>
+                                <span
+                                  className="wi-upload-btn"
+                                  style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+                                  onClick={() => triggerDailyGalleryUpload(r._key)}
+                                >
+                                  {dailyOcrBusyKey === r._key
+                                    ? "처리 중..."
+                                    : r.pendingReceipt
+                                    ? "🖼 첨부됨"
+                                    : "🖼 사진 올리기"}
+                                </span>
+                              </div>
                             </>
                           )}
                         </div>
@@ -1346,15 +1349,17 @@ export default function ProjectSheet({
                                 </select>
                               )}
                               {TAX_INVOICE_TYPES.includes(r.type) && (
-                                <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
+                                <label style={{ display: "flex", alignItems: "center", gap: 2, fontSize: 11 }}>
                                   <input
                                     type="checkbox"
+                                    style={{ flex: "none", width: 15, height: 15, minWidth: 0, margin: 0 }}
                                     checked={r.taxInvoice}
                                     onChange={(e) => updateDailyRow(r._key, "taxInvoice", e.target.checked)}
                                   />
                                   세금계산서
                                 </label>
                               )}
+                              <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
                               <span
                                 className="wi-upload-btn"
                                 style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
@@ -1377,6 +1382,7 @@ export default function ProjectSheet({
                                   ? "🖼 첨부됨"
                                   : "🖼 사진 올리기"}
                               </span>
+                              </div>
                             </>
                           )}
                         </div>
