@@ -17,6 +17,7 @@ export function useAuth(): AuthCtx {
 }
 
 const STORAGE_KEY = "erp_user";
+const LAST_NAME_KEY = "erp_last_name";
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -78,6 +79,15 @@ function LoginScreen({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    try {
+      const last = localStorage.getItem(LAST_NAME_KEY);
+      if (last) setName(last);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   if (!status) {
     return (
       <div className="app">
@@ -91,7 +101,7 @@ function LoginScreen({
   async function submit() {
     setError("");
     if (!name.trim()) {
-      setError(firstRun ? "관리자 이름을 입력해주세요." : "이름을 선택해주세요.");
+      setError("이름을 입력해주세요.");
       return;
     }
     if (!/^\d{4}$/.test(pin)) {
@@ -112,6 +122,11 @@ function LoginScreen({
       }
       if (firstRun) {
         onStatusRefresh({ hasUsers: true, names: [body.user.name] });
+      }
+      try {
+        localStorage.setItem(LAST_NAME_KEY, body.user.name);
+      } catch {
+        /* ignore */
       }
       onLogin(body.user);
     } catch {
@@ -148,7 +163,7 @@ function LoginScreen({
           <div style={{ fontSize: 12.5, color: "#8a8371", margin: "6px 0 12px" }}>
             {firstRun
               ? "처음 실행이에요. 관리자(본사) 계정을 먼저 만들어주세요. 이후 관리자 화면에서 직원을 등록하고 담당 현장을 지정할 수 있어요."
-              : "이름을 고르고 4자리 비밀번호를 입력하세요."}
+              : "이름을 입력하고 4자리 비밀번호를 입력하세요."}
           </div>
 
           {error && (
@@ -158,23 +173,18 @@ function LoginScreen({
           )}
 
           <label style={{ fontSize: 12.5, color: "#8a8371", fontWeight: 600 }}>이름</label>
-          {firstRun || status.names.length === 0 ? (
-            <input
-              style={inputStyle}
-              value={name}
-              placeholder="이름"
-              onChange={(e) => setName(e.target.value)}
-            />
-          ) : (
-            <select style={inputStyle} value={name} onChange={(e) => setName(e.target.value)}>
-              <option value="">— 이름 선택 —</option>
-              {status.names.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          )}
+          <input
+            style={inputStyle}
+            value={name}
+            placeholder="이름"
+            list="login_name_options"
+            onChange={(e) => setName(e.target.value)}
+          />
+          <datalist id="login_name_options">
+            {status.names.map((n) => (
+              <option key={n} value={n} />
+            ))}
+          </datalist>
 
           <label style={{ fontSize: 12.5, color: "#8a8371", fontWeight: 600, display: "block", marginTop: 12 }}>
             비밀번호 (숫자 4자리)
