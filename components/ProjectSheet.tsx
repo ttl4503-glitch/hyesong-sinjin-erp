@@ -23,9 +23,6 @@ import { extractReceiptAmount } from "@/lib/receiptOcr";
 const RECEIPT_TYPES = ["장비", "자재", "식대", "참", "운반비", "잡자재"];
 const TAX_INVOICE_TYPES = ["장비", "자재", "운반비", "잡자재"];
 const VENDOR_TYPES = ["자재", "식대", "운반비", "잡자재"];
-// Types whose amount/unit/vendor can be auto-filled from a previously-used
-// name (equipment cost is computed from 공수×단가, so it's excluded there).
-const OCR_AMOUNT_TYPES = ["자재", "식대", "참", "운반비", "잡자재"];
 // Types that get OCR-based auto amount recognition when a receipt photo is
 // attached. 식대/참 are excluded on purpose — the amount is entered by hand
 // and the photo is just kept as backup proof, not auto-read.
@@ -382,10 +379,6 @@ export default function ProjectSheet({
       if (known && f.type === "인력" && known.jobType) {
         next.jobType = known.jobType;
       }
-      if (known && OCR_AMOUNT_TYPES.includes(f.type)) {
-        if (known.unit) next.unit = known.unit;
-        if (known.vendor) next.vendor = known.vendor;
-      }
       return next;
     });
   }
@@ -568,10 +561,6 @@ export default function ProjectSheet({
           }
           if (known && r.type === "인력" && known.jobType) {
             next.jobType = known.jobType;
-          }
-          if (known && OCR_AMOUNT_TYPES.includes(r.type)) {
-            if (known.unit) next.unit = known.unit;
-            if (known.vendor) next.vendor = known.vendor;
           }
         }
         return next;
