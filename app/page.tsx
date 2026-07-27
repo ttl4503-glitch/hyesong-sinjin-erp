@@ -145,7 +145,7 @@ export default function HomePage() {
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 10, color: "#8fb9c9", padding: "6px 0 10px 0" }}>
+        <div style={{ fontSize: 11, color: "#8fb9c9", padding: "6px 0 10px 0" }}>
           ⚠️ 이 화면을 여는 모든 사람이 같은 데이터를 함께 보고 수정해요
         </div>
       </div>
@@ -160,7 +160,7 @@ export default function HomePage() {
             padding: "0 8px",
             border: "1px solid var(--line)",
             borderRadius: 6,
-            fontSize: 12,
+            fontSize: 13,
             background: "#fff",
             color: "var(--ink)",
           }}
@@ -179,7 +179,7 @@ export default function HomePage() {
             padding: "0 8px",
             border: "1px solid var(--line)",
             borderRadius: 6,
-            fontSize: 12,
+            fontSize: 13,
             background: "#fff",
             color: "var(--ink)",
           }}
@@ -200,7 +200,7 @@ export default function HomePage() {
               padding: "8px",
               border: "1px solid var(--line)",
               borderRadius: 6,
-              fontSize: 12,
+              fontSize: 13,
               background: "#fff",
               color: "var(--ink)",
             }}
@@ -224,7 +224,7 @@ export default function HomePage() {
               padding: "8px",
               border: "1px solid var(--line)",
               borderRadius: 6,
-              fontSize: 12,
+              fontSize: 13,
               background: "#fff",
               color: "var(--ink)",
             }}
@@ -258,7 +258,7 @@ export default function HomePage() {
             padding: "0 8px",
             border: "1px solid var(--line)",
             borderRadius: 6,
-            fontSize: 12,
+            fontSize: 13,
             background: "#fff",
             color: "var(--ink)",
           }}
@@ -277,7 +277,7 @@ export default function HomePage() {
             padding: "0 8px",
             border: "1px solid var(--line)",
             borderRadius: 6,
-            fontSize: 12,
+            fontSize: 13,
             background: "#fff",
             color: "var(--ink)",
           }}
@@ -298,7 +298,7 @@ export default function HomePage() {
               padding: "8px",
               border: "1px solid var(--line)",
               borderRadius: 6,
-              fontSize: 12,
+              fontSize: 13,
               background: "#fff",
               color: "var(--ink)",
             }}
@@ -322,7 +322,7 @@ export default function HomePage() {
               padding: "8px",
               border: "1px solid var(--line)",
               borderRadius: 6,
-              fontSize: 12,
+              fontSize: 13,
               background: "#fff",
               color: "var(--ink)",
             }}

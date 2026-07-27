@@ -34,14 +34,14 @@ html, body{
   border-bottom:3px solid var(--blueprint-light);
 }
 .topbar h1{
-  font-size:15px; letter-spacing:2px; font-weight:600;
+  font-size:17px; letter-spacing:2px; font-weight:600;
   margin:0 0 14px 0; text-transform:uppercase; opacity:.85;
 }
 .topbar h1 span{color:#8fb9c9;}
 .tabs{display:flex; gap:0;}
 .tab{
   flex:1; text-align:center; padding:10px 4px 12px 4px;
-  font-size:14px; font-weight:600; color:#a9c2c9;
+  font-size:15px; font-weight:600; color:#a9c2c9;
   border-bottom:3px solid transparent; cursor:pointer;
   transition:.15s;
 }
@@ -62,12 +62,12 @@ html, body{
 
 /* Section label */
 .section-label{
-  padding:16px 16px 6px 16px; font-size:12px; letter-spacing:1px;
+  padding:16px 16px 6px 16px; font-size:13px; letter-spacing:1px;
   color:#8a8371; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;
 }
 .export-btn{
   background:none; border:1px solid var(--blueprint); color:var(--blueprint);
-  font-size:11px; font-weight:700; padding:5px 9px; border-radius:5px; cursor:pointer;
+  font-size:12px; font-weight:700; padding:5px 9px; border-radius:5px; cursor:pointer;
   text-transform:none; letter-spacing:0;
 }
 .export-btn:active{background:var(--blueprint); color:#fff;}
@@ -75,7 +75,7 @@ html, body{
 /* Project list */
 .list{padding:0 16px 90px 16px; display:flex; flex-direction:column; gap:10px;}
 .empty{
-  text-align:center; padding:40px 20px; color:#8a8371; font-size:13px;
+  text-align:center; padding:40px 20px; color:#8a8371; font-size:14px;
   border:1px dashed var(--line); border-radius:8px; margin:10px 16px;
 }
 .card{
@@ -84,10 +84,10 @@ html, body{
 }
 .card:active{transform:scale(.99);}
 .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
-.card-title{font-size:15px; font-weight:700;}
-.card-loc{font-size:12px; color:#6b6455; margin-top:2px;}
+.card-title{font-size:17px; font-weight:700;}
+.card-loc{font-size:13px; color:#6b6455; margin-top:2px;}
 .tag{
-  font-size:10px; font-weight:700; padding:3px 7px; border-radius:4px;
+  font-size:11px; font-weight:700; padding:3px 7px; border-radius:4px;
   white-space:nowrap;
 }
 .tag.hyesong{background:var(--hyesong-bg); color:var(--hyesong);}
@@ -97,8 +97,8 @@ html, body{
 /* gauge / ruler progress bar - signature element */
 .gauge{margin-top:12px;}
 .gauge-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;}
-.gauge-pct{font-family:var(--mono); font-size:18px; font-weight:700;}
-.gauge-period{font-size:11px; color:#8a8371; font-family:var(--mono);}
+.gauge-pct{font-family:var(--mono); font-size:19px; font-weight:700;}
+.gauge-period{font-size:12px; color:#8a8371; font-family:var(--mono);}
 .ruler{
   position:relative; height:14px; background:var(--paper-dark);
   border-radius:2px; overflow:hidden; border:1px solid var(--line);
@@ -111,7 +111,7 @@ html, body{
 .ruler-fill.over{background:var(--danger);}
 .ruler-ticks{position:absolute; inset:0; display:flex;}
 .ruler-ticks div{flex:1; border-right:1px solid rgba(0,0,0,.06);}
-.status-row{display:flex; justify-content:space-between; margin-top:8px; font-size:11px; color:#8a8371;}
+.status-row{display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:#8a8371;}
 .status-row .dday.late{color:var(--danger); font-weight:700;}
 
 /* Floating add button */
