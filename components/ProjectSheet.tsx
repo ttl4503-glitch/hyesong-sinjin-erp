@@ -23,9 +23,15 @@ import { extractReceiptAmount } from "@/lib/receiptOcr";
 const RECEIPT_TYPES = ["장비", "자재", "식대", "참", "운반비", "잡자재"];
 const TAX_INVOICE_TYPES = ["장비", "자재", "운반비", "잡자재"];
 const VENDOR_TYPES = ["자재", "식대", "운반비", "잡자재"];
-// Types whose amount can be OCR-auto-filled from a receipt photo (equipment
-// cost is already computed from 공수×단가, so it's excluded).
+// Types whose amount/unit/vendor can be auto-filled from a previously-used
+// name (equipment cost is computed from 공수×단가, so it's excluded there).
 const OCR_AMOUNT_TYPES = ["자재", "식대", "참", "운반비", "잡자재"];
+// Types that get OCR-based auto amount recognition when a receipt photo is
+// attached. 식대/참 are excluded on purpose — the amount is entered by hand
+// and the photo is just kept as backup proof, not auto-read.
+const RECEIPT_OCR_TYPES = ["자재", "운반비", "잡자재"];
+// 식대/참 rows only need a name and an amount — no unit/qty/vendor/공종.
+const SIMPLE_AMOUNT_TYPES = ["식대", "참"];
 
 interface DraftWorkItem extends ParsedWorkItem {
   _key: string;
@@ -201,6 +207,7 @@ export default function ProjectSheet({
   const [dailyOcrBusyKey, setDailyOcrBusyKey] = useState<string | null>(null);
   const [pendingDailyRowKey, setPendingDailyRowKey] = useState<string | null>(null);
   const dailyReceiptInputRef = useRef<HTMLInputElement>(null);
+  const dailyGalleryInputRef = useRef<HTMLInputElement>(null);
   const [showManualForm, setShowManualForm] = useState(false);
 
   function toggleGroup(type: string) {
@@ -570,6 +577,11 @@ export default function ProjectSheet({
     dailyReceiptInputRef.current?.click();
   }
 
+  function triggerDailyGalleryUpload(key: string) {
+    setPendingDailyRowKey(key);
+    dailyGalleryInputRef.current?.click();
+  }
+
   async function handleDailyReceiptFile(file: File) {
     const key = pendingDailyRowKey;
     const row = dailyRows.find((r) => r._key === key);
@@ -577,7 +589,7 @@ export default function ProjectSheet({
     setDailyOcrBusyKey(key);
     try {
       const dataUrl = await compressImage(file);
-      const amount = OCR_AMOUNT_TYPES.includes(row.type)
+      const amount = RECEIPT_OCR_TYPES.includes(row.type)
         ? await extractReceiptAmount(file).catch(() => null)
         : null;
       setDailyRows((prev) =>
@@ -1232,70 +1244,108 @@ export default function ProjectSheet({
                           </div>
                         </div>
                         <div className="wi-edit-row-fields">
-                          <input
-                            type="text"
-                            placeholder="규격/단위"
-                            value={r.unit}
-                            onChange={(e) => updateDailyRow(r._key, "unit", e.target.value)}
-                          />
-                          <input
-                            type="number"
-                            placeholder="수량"
-                            value={r.qty || ""}
-                            onChange={(e) => updateDailyRow(r._key, "qty", e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="금액"
-                            value={r.amount ? Number(r.amount).toLocaleString("ko-KR") : ""}
-                            onChange={(e) =>
-                              updateDailyRow(r._key, "amount", e.target.value.replace(/[^0-9]/g, ""))
-                            }
-                          />
-                          {VENDOR_TYPES.includes(r.type) && (
-                            <input
-                              type="text"
-                              placeholder="업체명"
-                              value={r.vendor}
-                              onChange={(e) => updateDailyRow(r._key, "vendor", e.target.value)}
-                            />
-                          )}
-                          {selectableWorkItems.length > 0 && (
-                            <select
-                              value={r.workItemId}
-                              onChange={(e) => updateDailyRow(r._key, "workItemId", e.target.value)}
-                            >
-                              <option value="">공종 선택안함</option>
-                              {selectableWorkItems.map((w) => (
-                                <option key={w.id} value={w.id}>
-                                  {w.name}
-                                  {w.spec ? ` (${w.spec})` : ""} · 예산 {formatWon(w.amount)}원
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                          {TAX_INVOICE_TYPES.includes(r.type) && (
-                            <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
+                          {SIMPLE_AMOUNT_TYPES.includes(r.type) ? (
+                            <>
                               <input
-                                type="checkbox"
-                                checked={r.taxInvoice}
-                                onChange={(e) => updateDailyRow(r._key, "taxInvoice", e.target.checked)}
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="금액"
+                                value={r.amount ? Number(r.amount).toLocaleString("ko-KR") : ""}
+                                onChange={(e) =>
+                                  updateDailyRow(r._key, "amount", e.target.value.replace(/[^0-9]/g, ""))
+                                }
                               />
-                              계산서
-                            </label>
+                              <span
+                                className="wi-upload-btn"
+                                style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+                                onClick={() => triggerDailyReceipt(r._key)}
+                              >
+                                {dailyOcrBusyKey === r._key
+                                  ? "인식 중..."
+                                  : r.pendingReceipt
+                                  ? "📷 촬영됨"
+                                  : "📷 촬영"}
+                              </span>
+                              <span
+                                className="wi-upload-btn"
+                                style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+                                onClick={() => triggerDailyGalleryUpload(r._key)}
+                              >
+                                {dailyOcrBusyKey === r._key
+                                  ? "인식 중..."
+                                  : r.pendingReceipt
+                                  ? "🖼 첨부됨"
+                                  : "🖼 사진 올리기"}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <input
+                                type="text"
+                                placeholder="규격/단위"
+                                value={r.unit}
+                                onChange={(e) => updateDailyRow(r._key, "unit", e.target.value)}
+                              />
+                              <input
+                                type="number"
+                                placeholder="수량"
+                                value={r.qty || ""}
+                                onChange={(e) => updateDailyRow(r._key, "qty", e.target.value)}
+                              />
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="금액"
+                                value={r.amount ? Number(r.amount).toLocaleString("ko-KR") : ""}
+                                onChange={(e) =>
+                                  updateDailyRow(r._key, "amount", e.target.value.replace(/[^0-9]/g, ""))
+                                }
+                              />
+                              {VENDOR_TYPES.includes(r.type) && (
+                                <input
+                                  type="text"
+                                  placeholder="업체명"
+                                  value={r.vendor}
+                                  onChange={(e) => updateDailyRow(r._key, "vendor", e.target.value)}
+                                />
+                              )}
+                              {selectableWorkItems.length > 0 && (
+                                <select
+                                  value={r.workItemId}
+                                  onChange={(e) => updateDailyRow(r._key, "workItemId", e.target.value)}
+                                >
+                                  <option value="">공종 선택안함</option>
+                                  {selectableWorkItems.map((w) => (
+                                    <option key={w.id} value={w.id}>
+                                      {w.name}
+                                      {w.spec ? ` (${w.spec})` : ""} · 예산 {formatWon(w.amount)}원
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                              {TAX_INVOICE_TYPES.includes(r.type) && (
+                                <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={r.taxInvoice}
+                                    onChange={(e) => updateDailyRow(r._key, "taxInvoice", e.target.checked)}
+                                  />
+                                  계산서
+                                </label>
+                              )}
+                              <span
+                                className="wi-upload-btn"
+                                style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+                                onClick={() => triggerDailyReceipt(r._key)}
+                              >
+                                {dailyOcrBusyKey === r._key
+                                  ? "인식 중..."
+                                  : r.pendingReceipt
+                                  ? "📷 사진 첨부됨"
+                                  : "📷 영수증 찍기"}
+                              </span>
+                            </>
                           )}
-                          <span
-                            className="wi-upload-btn"
-                            style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
-                            onClick={() => triggerDailyReceipt(r._key)}
-                          >
-                            {dailyOcrBusyKey === r._key
-                              ? "인식 중..."
-                              : r.pendingReceipt
-                              ? "📷 사진 첨부됨"
-                              : "📷 영수증 찍기"}
-                          </span>
                         </div>
                       </div>
                     ))}
@@ -1817,6 +1867,18 @@ export default function ProjectSheet({
         accept="image/*"
         capture="environment"
         ref={dailyReceiptInputRef}
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleDailyReceiptFile(file);
+          e.target.value = "";
+        }}
+      />
+
+      <input
+        type="file"
+        accept="image/*"
+        ref={dailyGalleryInputRef}
         style={{ display: "none" }}
         onChange={(e) => {
           const file = e.target.files?.[0];
