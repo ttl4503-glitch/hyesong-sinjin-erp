@@ -1179,7 +1179,7 @@ export default function ProjectSheet({
                             </select>
                           )}
                           {type === "장비" && (
-                            <>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap" }}>
                               <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
                                 <input
                                   type="checkbox"
@@ -1196,8 +1196,8 @@ export default function ProjectSheet({
                                 {dailyOcrBusyKey === r._key
                                   ? "처리 중..."
                                   : r.pendingReceipt
-                                  ? "🧾 사진 첨부됨"
-                                  : "📷 촬영"}
+                                  ? "🧾 촬영됨"
+                                  : "🧾 세금계산서 촬영"}
                               </span>
                               <span
                                 className="wi-upload-btn"
@@ -1210,7 +1210,7 @@ export default function ProjectSheet({
                                   ? "🖼 첨부됨"
                                   : "🖼 사진 올리기"}
                               </span>
-                            </>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1345,38 +1345,40 @@ export default function ProjectSheet({
                                   ))}
                                 </select>
                               )}
-                              {TAX_INVOICE_TYPES.includes(r.type) && (
-                                <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={r.taxInvoice}
-                                    onChange={(e) => updateDailyRow(r._key, "taxInvoice", e.target.checked)}
-                                  />
-                                  계산서
-                                </label>
-                              )}
-                              <span
-                                className="wi-upload-btn"
-                                style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
-                                onClick={() => triggerDailyReceipt(r._key)}
-                              >
-                                {dailyOcrBusyKey === r._key
-                                  ? "인식 중..."
-                                  : r.pendingReceipt
-                                  ? "📷 촬영됨"
-                                  : "📷 촬영"}
-                              </span>
-                              <span
-                                className="wi-upload-btn"
-                                style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
-                                onClick={() => triggerDailyGalleryUpload(r._key)}
-                              >
-                                {dailyOcrBusyKey === r._key
-                                  ? "인식 중..."
-                                  : r.pendingReceipt
-                                  ? "🖼 첨부됨"
-                                  : "🖼 사진 올리기"}
-                              </span>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap" }}>
+                                {TAX_INVOICE_TYPES.includes(r.type) && (
+                                  <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={r.taxInvoice}
+                                      onChange={(e) => updateDailyRow(r._key, "taxInvoice", e.target.checked)}
+                                    />
+                                    계산서
+                                  </label>
+                                )}
+                                <span
+                                  className="wi-upload-btn"
+                                  style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+                                  onClick={() => triggerDailyReceipt(r._key)}
+                                >
+                                  {dailyOcrBusyKey === r._key
+                                    ? "인식 중..."
+                                    : r.pendingReceipt
+                                    ? "🧾 촬영됨"
+                                    : "🧾 세금계산서 촬영"}
+                                </span>
+                                <span
+                                  className="wi-upload-btn"
+                                  style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+                                  onClick={() => triggerDailyGalleryUpload(r._key)}
+                                >
+                                  {dailyOcrBusyKey === r._key
+                                    ? "인식 중..."
+                                    : r.pendingReceipt
+                                    ? "🖼 첨부됨"
+                                    : "🖼 사진 올리기"}
+                                </span>
+                              </div>
                             </>
                           )}
                         </div>
