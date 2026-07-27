@@ -125,7 +125,7 @@ export function getWorkItemProgress(p: Project, itemId: string) {
 }
 
 export function getKnownNames(projects: Project[]) {
-  const map = new Map<string, { type: string; rate: number; unit: string; vendor: string }>();
+  const map = new Map<string, { type: string; rate: number; unit: string; vendor: string; jobType: string }>();
   projects.forEach((pr) => {
     (pr.laborLogs || []).forEach((l) => {
       if (l.name) {
@@ -134,6 +134,7 @@ export function getKnownNames(projects: Project[]) {
           rate: l.rate || 0,
           unit: l.unit || "",
           vendor: l.vendor || "",
+          jobType: l.jobType || "",
         });
       }
     });
@@ -144,6 +145,7 @@ export function getKnownNames(projects: Project[]) {
     rate: info.rate,
     unit: info.unit,
     vendor: info.vendor,
+    jobType: info.jobType,
   }));
 }
 

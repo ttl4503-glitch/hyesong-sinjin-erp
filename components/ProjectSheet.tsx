@@ -379,6 +379,9 @@ export default function ProjectSheet({
       if (known && (f.type === "인력" || f.type === "장비") && known.rate) {
         next.rate = String(known.rate);
       }
+      if (known && f.type === "인력" && known.jobType) {
+        next.jobType = known.jobType;
+      }
       if (known && OCR_AMOUNT_TYPES.includes(f.type)) {
         if (known.unit) next.unit = known.unit;
         if (known.vendor) next.vendor = known.vendor;
@@ -436,6 +439,11 @@ export default function ProjectSheet({
     setEditingLogId(l.id);
     setLogForm(logToForm(l));
     setShowManualForm(true);
+  }
+
+  function startInlineEditLog(l: LaborLog) {
+    setEditingLogId(l.id);
+    setLogForm(logToForm(l));
   }
 
   function cancelEditLog() {
@@ -557,6 +565,9 @@ export default function ProjectSheet({
           if (known && (r.type === "인력" || r.type === "장비") && known.rate) {
             next.rate = known.rate;
             next.amount = (Number(next.qty) || 0) * known.rate;
+          }
+          if (known && r.type === "인력" && known.jobType) {
+            next.jobType = known.jobType;
           }
           if (known && OCR_AMOUNT_TYPES.includes(r.type)) {
             if (known.unit) next.unit = known.unit;
@@ -1185,8 +1196,19 @@ export default function ProjectSheet({
                                 {dailyOcrBusyKey === r._key
                                   ? "처리 중..."
                                   : r.pendingReceipt
-                                  ? "🧾 세금계산서 첨부됨"
-                                  : "🧾 세금계산서 찍기"}
+                                  ? "🧾 사진 첨부됨"
+                                  : "📷 촬영"}
+                              </span>
+                              <span
+                                className="wi-upload-btn"
+                                style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+                                onClick={() => triggerDailyGalleryUpload(r._key)}
+                              >
+                                {dailyOcrBusyKey === r._key
+                                  ? "처리 중..."
+                                  : r.pendingReceipt
+                                  ? "🖼 첨부됨"
+                                  : "🖼 사진 올리기"}
                               </span>
                             </>
                           )}
@@ -1341,8 +1363,19 @@ export default function ProjectSheet({
                                 {dailyOcrBusyKey === r._key
                                   ? "인식 중..."
                                   : r.pendingReceipt
-                                  ? "📷 사진 첨부됨"
-                                  : "📷 영수증 찍기"}
+                                  ? "📷 촬영됨"
+                                  : "📷 촬영"}
+                              </span>
+                              <span
+                                className="wi-upload-btn"
+                                style={{ fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+                                onClick={() => triggerDailyGalleryUpload(r._key)}
+                              >
+                                {dailyOcrBusyKey === r._key
+                                  ? "인식 중..."
+                                  : r.pendingReceipt
+                                  ? "🖼 첨부됨"
+                                  : "🖼 사진 올리기"}
                               </span>
                             </>
                           )}
@@ -1527,6 +1560,122 @@ export default function ProjectSheet({
                                             : "";
                                         const amountPart = l.amount ? formatWon(l.amount) + "원" : "";
                                         const mid = [qtyPart, ratePart, amountPart].filter(Boolean).join(" · ");
+                                        if (editingLogId === l.id) {
+                                          return (
+                                            <div className="lg-add" key={l.id} style={{ margin: "4px 0" }}>
+                                              {selectableWorkItems.length > 0 ? (
+                                                <select
+                                                  className="lg-workitem-select"
+                                                  value={logForm.workItemId}
+                                                  onChange={(e) => setLogForm({ ...logForm, workItemId: e.target.value })}
+                                                >
+                                                  <option value="">공종 선택안함</option>
+                                                  {selectableWorkItems.map((w) => (
+                                                    <option key={w.id} value={w.id}>
+                                                      {w.name}
+                                                      {w.spec ? ` (${w.spec})` : ""} · 예산 {formatWon(w.amount)}원
+                                                    </option>
+                                                  ))}
+                                                </select>
+                                              ) : null}
+                                              {isPersonType && (
+                                                <input
+                                                  className="lg-jobtype-input"
+                                                  type="text"
+                                                  list="lg_jobtype_options"
+                                                  placeholder="직종 (예: 조경공)"
+                                                  value={logForm.jobType}
+                                                  onChange={(e) => setLogForm({ ...logForm, jobType: e.target.value })}
+                                                />
+                                              )}
+                                              {logForm.type === "장비" && (
+                                                <input
+                                                  className="lg-jobtype-input"
+                                                  type="text"
+                                                  placeholder="이름 (운전자, 선택)"
+                                                  value={logForm.jobType}
+                                                  onChange={(e) => setLogForm({ ...logForm, jobType: e.target.value })}
+                                                />
+                                              )}
+                                              <input
+                                                className="lg-name-input"
+                                                type="text"
+                                                list={`lg_name_options_${logForm.type}`}
+                                                placeholder={NAME_PLACEHOLDER[logForm.type] || "항목명"}
+                                                value={logForm.name}
+                                                onChange={(e) => onLgNameChange(e.target.value)}
+                                              />
+                                              <input
+                                                type="number"
+                                                step={0.5}
+                                                min={0}
+                                                placeholder={isLaborType ? "공수" : "수량"}
+                                                value={logForm.qty}
+                                                onChange={(e) => setLogForm({ ...logForm, qty: e.target.value })}
+                                              />
+                                              <input
+                                                className="lg-unit-input"
+                                                type="text"
+                                                placeholder="단위"
+                                                value={logForm.unit}
+                                                onChange={(e) => setLogForm({ ...logForm, unit: e.target.value })}
+                                              />
+                                              {isLaborType && (
+                                                <input
+                                                  className="lg-rate-input"
+                                                  type="number"
+                                                  placeholder="단가(원)"
+                                                  value={logForm.rate}
+                                                  onChange={(e) => setLogForm({ ...logForm, rate: e.target.value })}
+                                                />
+                                              )}
+                                              {!isLaborType && (
+                                                <input
+                                                  className="lg-amount-input"
+                                                  type="number"
+                                                  placeholder="금액(원)"
+                                                  value={logForm.amount}
+                                                  onChange={(e) => setLogForm({ ...logForm, amount: e.target.value })}
+                                                />
+                                              )}
+                                              <input
+                                                type="date"
+                                                value={logForm.date}
+                                                onChange={(e) => setLogForm({ ...logForm, date: e.target.value })}
+                                              />
+                                              <input
+                                                className="lg-note-input"
+                                                type="text"
+                                                placeholder="비고 (선택)"
+                                                value={logForm.note}
+                                                onChange={(e) => setLogForm({ ...logForm, note: e.target.value })}
+                                              />
+                                              {VENDOR_TYPES.includes(logForm.type) && (
+                                                <input
+                                                  type="text"
+                                                  placeholder="업체명"
+                                                  value={logForm.vendor}
+                                                  onChange={(e) => setLogForm({ ...logForm, vendor: e.target.value })}
+                                                />
+                                              )}
+                                              {isMaterialType && (
+                                                <div className="lg-tax-row">
+                                                  <input
+                                                    type="checkbox"
+                                                    id={`lg_inline_tax_${l.id}`}
+                                                    checked={logForm.taxInvoice}
+                                                    onChange={(e) => setLogForm({ ...logForm, taxInvoice: e.target.checked })}
+                                                  />
+                                                  <label htmlFor={`lg_inline_tax_${l.id}`}>세금계산서 발행됨</label>
+                                                </div>
+                                              )}
+                                              <button onClick={handleSubmitLaborLog}>수정 저장</button>
+                                              <span className="lg-cancel" onClick={cancelEditLog}>
+                                                취소
+                                              </span>
+                                            </div>
+                                          );
+                                        }
                                         return (
                                           <div className="lg-item" key={l.id} style={{ padding: "3px 0" }}>
                                             <div className="lg-body">
@@ -1552,7 +1701,7 @@ export default function ProjectSheet({
                                                 {receiptBusyId === l.id ? "…" : "🧾"}
                                               </div>
                                             )}
-                                            <div className="lg-edit" onClick={() => startEditLog(l)}>
+                                            <div className="lg-edit" onClick={() => startInlineEditLog(l)}>
                                               ✎
                                             </div>
                                             <div className="lg-del" onClick={() => handleDeleteLog(l.id)}>
