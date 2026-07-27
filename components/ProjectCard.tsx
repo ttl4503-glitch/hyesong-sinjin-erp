@@ -61,6 +61,7 @@ export default function ProjectCard({
       </div>
       <div className="status-row">
         <span>누적 투입비용 {formatWon(totalInvestedCost(project))}원</span>
+        <span>공사금액 {project.contractAmount ? formatWon(project.contractAmount) + "원" : "미입력"}</span>
       </div>
     </div>
   );

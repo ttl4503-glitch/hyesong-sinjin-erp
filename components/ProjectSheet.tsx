@@ -181,6 +181,7 @@ export default function ProjectSheet({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [savedFlash, setSavedFlash] = useState(false);
 
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [logForm, setLogForm] = useState<LaborFormState>(emptyLaborForm());
@@ -313,11 +314,15 @@ export default function ProjectSheet({
       if (isEdit && project) {
         const updated = await api.updateProject(project.id, data);
         onProjectUpdated(updated);
+        // Keep the sheet open after editing an existing project so the user
+        // can make several changes in a row without reopening it each time.
+        setSavedFlash(true);
+        setTimeout(() => setSavedFlash(false), 2000);
       } else {
         const created = await api.createProject(data);
         onCreated(created);
+        onClose();
       }
-      onClose();
     } catch (e: any) {
       setError(e.message || "저장 중 오류가 발생했어요.");
     } finally {
@@ -1769,6 +1774,11 @@ export default function ProjectSheet({
         <button className="btn-primary" onClick={handleSaveFields} disabled={saving}>
           {isEdit ? "저장" : "등록"}
         </button>
+        {savedFlash && (
+          <div style={{ textAlign: "center", color: "var(--sinjin)", fontSize: 12, marginTop: -4 }}>
+            ✓ 저장됐어요 — 계속 수정하실 수 있어요
+          </div>
+        )}
         {isEdit && (
           <button className="btn-danger" onClick={handleDeleteProject}>
             공사 삭제
