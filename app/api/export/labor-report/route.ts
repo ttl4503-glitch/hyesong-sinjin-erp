@@ -376,8 +376,26 @@ export async function GET(req: NextRequest) {
   });
   const sumFirst = addr(3, 2);
   const sumLast = addr(3 + companyTotalRows.length - 1, 2);
-  wsSummary[addr(3 + companyTotalRows.length, 2)] = { t: "n", f: `SUM(${sumFirst}:${sumLast})` };
+  const summaryTotalRow = 3 + companyTotalRows.length;
+  wsSummary[addr(summaryTotalRow, 2)] = { t: "n", f: `SUM(${sumFirst}:${sumLast})` };
   wsSummary["!merges"] = [{ s: { r: 0, c: 1 }, e: { r: 0, c: 2 } }];
+
+  styleCell(wsSummary, 0, 1, TITLE_STYLE); // 제목 굵고 크게
+  const HEADER_BOLD_CENTER = { font: { bold: true }, alignment: { horizontal: "center", vertical: "center" } };
+  styleCell(wsSummary, 2, 1, HEADER_BOLD_CENTER);
+  styleCell(wsSummary, 2, 2, HEADER_BOLD_CENTER);
+  for (let i = 0; i < companyTotalRows.length; i++) {
+    centerCell(wsSummary, 3 + i, 1);
+    centerCell(wsSummary, 3 + i, 2);
+  }
+  styleCell(wsSummary, summaryTotalRow, 1, HEADER_BOLD_CENTER);
+  styleCell(wsSummary, summaryTotalRow, 2, HEADER_BOLD_CENTER);
+  for (let r = 2; r <= summaryTotalRow; r++) {
+    addBorder(wsSummary, r, 1);
+    addBorder(wsSummary, r, 2);
+  }
+  wsSummary["!cols"] = [{ wch: 3 }, { wch: 18 }, { wch: 18 }];
+  wsSummary["!rows"] = [{ hpt: 30 }];
   XLSX.utils.book_append_sheet(wb, wsSummary, "노무비집계");
 
   // 사원명부 시트 — 임금대장의 VLOOKUP이 참조하는 원본 인원 명부
