@@ -377,25 +377,34 @@ export async function GET(req: NextRequest) {
   const sumFirst = addr(3, 2);
   const sumLast = addr(3 + companyTotalRows.length - 1, 2);
   const summaryTotalRow = 3 + companyTotalRows.length;
-  wsSummary[addr(summaryTotalRow, 2)] = { t: "n", f: `SUM(${sumFirst}:${sumLast})` };
+  const ZERO_AS_DASH = '#,##0;-#,##0;"-"';
+  wsSummary[addr(summaryTotalRow, 2)] = { t: "n", f: `SUM(${sumFirst}:${sumLast})`, z: ZERO_AS_DASH };
   wsSummary["!merges"] = [{ s: { r: 0, c: 1 }, e: { r: 0, c: 2 } }];
 
-  styleCell(wsSummary, 0, 1, TITLE_STYLE); // 제목 굵고 크게
-  const HEADER_BOLD_CENTER = { font: { bold: true }, alignment: { horizontal: "center", vertical: "center" } };
-  styleCell(wsSummary, 2, 1, HEADER_BOLD_CENTER);
-  styleCell(wsSummary, 2, 2, HEADER_BOLD_CENTER);
+  const SUMMARY_TITLE_STYLE = { font: { bold: true, sz: 26 }, alignment: { horizontal: "center", vertical: "center" } };
+  const SUMMARY_CELL_STYLE = { font: { sz: 16 }, alignment: { horizontal: "center", vertical: "center" } };
+  const SUMMARY_HEADER_STYLE = { font: { bold: true, sz: 16 }, alignment: { horizontal: "center", vertical: "center" } };
+
+  styleCell(wsSummary, 0, 1, SUMMARY_TITLE_STYLE); // 제목 굵고 크게
+  styleCell(wsSummary, 2, 1, SUMMARY_HEADER_STYLE);
+  styleCell(wsSummary, 2, 2, SUMMARY_HEADER_STYLE);
   for (let i = 0; i < companyTotalRows.length; i++) {
-    centerCell(wsSummary, 3 + i, 1);
-    centerCell(wsSummary, 3 + i, 2);
+    styleCell(wsSummary, 3 + i, 1, SUMMARY_CELL_STYLE);
+    const valAddr = addr(3 + i, 2);
+    wsSummary[valAddr] = { ...(wsSummary[valAddr] as object), z: ZERO_AS_DASH };
+    styleCell(wsSummary, 3 + i, 2, SUMMARY_CELL_STYLE);
   }
-  styleCell(wsSummary, summaryTotalRow, 1, HEADER_BOLD_CENTER);
-  styleCell(wsSummary, summaryTotalRow, 2, HEADER_BOLD_CENTER);
+  styleCell(wsSummary, summaryTotalRow, 1, SUMMARY_HEADER_STYLE);
+  styleCell(wsSummary, summaryTotalRow, 2, SUMMARY_HEADER_STYLE);
   for (let r = 2; r <= summaryTotalRow; r++) {
     addBorder(wsSummary, r, 1);
     addBorder(wsSummary, r, 2);
   }
-  wsSummary["!cols"] = [{ wch: 3 }, { wch: 18 }, { wch: 18 }];
-  wsSummary["!rows"] = [{ hpt: 30 }];
+  wsSummary["!cols"] = [{ wch: 4 }, { wch: 20 }, { wch: 24 }];
+  const summaryRowsHeights: { hpt: number }[] = [];
+  summaryRowsHeights[0] = { hpt: 44 };
+  for (let r = 2; r <= summaryTotalRow; r++) summaryRowsHeights[r] = { hpt: 34 };
+  wsSummary["!rows"] = summaryRowsHeights;
   XLSX.utils.book_append_sheet(wb, wsSummary, "노무비집계");
 
   // 사원명부 시트 — 임금대장의 VLOOKUP이 참조하는 원본 인원 명부
