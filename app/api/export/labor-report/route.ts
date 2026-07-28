@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
 import { COMPANIES } from "@/lib/erp";
+import { getReqUser } from "@/lib/authServer";
 
 interface PersonAgg {
   name: string;
@@ -22,11 +23,18 @@ export async function GET(req: NextRequest) {
   const company = searchParams.get("company") || "";
   const projectId = searchParams.get("projectId") || "";
 
+  const reqUser = await getReqUser(req);
+  const isAdmin = !!reqUser?.isAdmin;
+
   let projects = await prisma.project.findMany({ include: { laborLogs: true } });
-  let scopeLabel = `전체(${COMPANIES.join("+")})`;
+  if (!isAdmin) {
+    const allowed = new Set(reqUser?.projectIds || []);
+    projects = projects.filter((p) => allowed.has(p.id));
+  }
+  let scopeLabel = isAdmin ? `전체(${COMPANIES.join("+")})` : "내 담당 현장";
   if (scope === "company" && company) {
     projects = projects.filter((p) => p.company === company);
-    scopeLabel = company;
+    scopeLabel = isAdmin ? company : `${company} (내 담당 현장)`;
   } else if (scope === "project" && projectId) {
     const proj = projects.find((p) => p.id === projectId);
     projects = proj ? [proj] : [];
