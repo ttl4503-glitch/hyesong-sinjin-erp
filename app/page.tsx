@@ -108,7 +108,7 @@ export default function HomePage() {
   const allCompaniesLabel = COMPANIES.join("+");
 
   const laborReportHref = useMemo(() => {
-    const params = new URLSearchParams({ month: reportMonth });
+    const params = new URLSearchParams({ month: reportMonth, uid: user.id });
     if (laborScope === "company") {
       params.set("scope", "company");
       params.set("company", laborCompany);
@@ -117,7 +117,7 @@ export default function HomePage() {
       params.set("projectId", laborProjectId);
     }
     return `/api/export/labor-report?${params.toString()}`;
-  }, [reportMonth, laborScope, laborCompany, laborProjectId]);
+  }, [reportMonth, laborScope, laborCompany, laborProjectId, user.id]);
 
   const laborReportLabel =
     laborScope === "company"
@@ -127,7 +127,7 @@ export default function HomePage() {
       : `🧾 노무비 신고용 집계 (${allCompaniesLabel} 합산)`;
 
   const monthlyReportHref = useMemo(() => {
-    const params = new URLSearchParams({ month: monthlyMonth });
+    const params = new URLSearchParams({ month: monthlyMonth, uid: user.id });
     if (monthlyScope === "company") {
       params.set("scope", "company");
       params.set("company", monthlyCompany);
@@ -136,7 +136,7 @@ export default function HomePage() {
       params.set("projectId", monthlyProjectId);
     }
     return `/api/export/monthly?${params.toString()}`;
-  }, [monthlyMonth, monthlyScope, monthlyCompany, monthlyProjectId]);
+  }, [monthlyMonth, monthlyScope, monthlyCompany, monthlyProjectId, user.id]);
 
   const monthlyReportLabel =
     monthlyScope === "company"

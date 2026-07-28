@@ -8,11 +8,15 @@ import { getReqUser } from "@/lib/authServer";
 
 // 실제 회계팀 "일용임금대장" 양식을 그대로 재현한다 (\\172.30.1.200\98. 회계\일용직\일용임금대장).
 // 사람×단가 조합마다 2행(1~15일 / 16~31일)을 쓰고, 근무일수·일당·총액·차인지급액과 공제
-// 관련 수식(갑근세/주민세/건강보험/장기요양/고용보험/공제계)을 실제 파일에서 확인한 그대로
-// 셀 수식으로 심어 넣는다. 국민연금은 실제 파일에서도 값이 채워지지 않는 칸이라 비워둔다.
+// 관련 수식(갑근세/주민세/건강보험/장기요양/고용보험/공제계)을 심어 넣는다. 국민연금(총액의
+// 4.75%)과 고용보험(총액의 0.9%)은 각각 만 60세/65세 이상이면 0원 처리되도록 주민등록번호
+// 앞자리로 나이를 계산하는 수식이 포함되어 있다. 명부에 없는 이름은 나이를 알 수 없으니
+// 나이 조건은 미적용(정상 계산)으로 둔다. 식재팀/직원 직종은 일용노무비 집계 대상이 아니라 제외한다.
 // 실제 원본 양식은 16~30일까지만 칸이 있어 31일 근무를 표시할 수 없었는데, 여기서는 원래
 // 비어있던 근무현황 마지막 칸(S열)을 31일 칸으로 써서 31일까지 표시되게 확장했다.
 
+// 이 리포트는 일용노무비 집계 전용이라 상용직 성격의 식재팀/직원은 제외한다.
+const EXCLUDED_JOB_TYPES = ["식재팀", "직원"];
 const DEDUCTION_COLS = { W: 22, X: 23, Y: 24, Z: 25, AA: 26 } as const;
 const DAY_COL_START = 3; // column D
 const NAME_COL = 1; // column B
@@ -55,6 +59,20 @@ function daysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
 }
 
+// 주민등록번호(VLOOKUP 결과 셀)로 "이 달 기준 만 나이"가 threshold세 이상인지 판정하는
+// 수식 문자열을 만든다. 주민번호 뒷자리 첫 숫자(성별코드)로 1900/2000년대를 구분한다.
+// 주민번호가 비어있거나(명부 미등록) 형식이 안 맞으면 나이를 알 수 없으니 미적용(FALSE)으로 둔다.
+function ageAtLeastFormula(idAddr: string, refYear: number, refMonth: number, refDay: number, threshold: number) {
+  const yy = `VALUE(LEFT(${idAddr},2))`;
+  const codeDigit = `MID(${idAddr},8,1)`;
+  const century = `IF(OR(${codeDigit}="3",${codeDigit}="4",${codeDigit}="7",${codeDigit}="8"),2000,1900)`;
+  const birthYear = `(${century}+${yy})`;
+  const birthMonth = `VALUE(MID(${idAddr},3,2))`;
+  const birthDay = `VALUE(MID(${idAddr},5,2))`;
+  const age = `(${refYear}-${birthYear}-IF(OR(${refMonth}<${birthMonth},AND(${refMonth}=${birthMonth},${refDay}<${birthDay})),1,0))`;
+  return `IFERROR(${age}>=${threshold},FALSE)`;
+}
+
 function blankRow(width: number): any[] {
   return new Array(width).fill("");
 }
@@ -69,9 +87,16 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
   let monthLabel = "";
   let periodLabel = "근무기간";
   let payLabel = "지급일";
+  const today = new Date();
+  let refYear = today.getFullYear();
+  let refMonth = today.getMonth() + 1;
+  let refDay = today.getDate();
   if (month) {
     const [y, m] = month.split("-").map(Number);
     const last = daysInMonth(y, m);
+    refYear = y;
+    refMonth = m;
+    refDay = last;
     monthLabel = `${y}년 ${m}월`;
     periodLabel = `근무기간\r\n${y}.${String(m).padStart(2, "0")}.01 ~${y}.${String(m).padStart(2, "0")}.${String(last).padStart(2, "0")}까지`;
     let py = y;
@@ -163,10 +188,12 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
     const YBaddr = addr(rB, DEDUCTION_COLS.Y);
     const Zaddr = addr(rA, DEDUCTION_COLS.Z);
     const AAaddr = addr(rA, DEDUCTION_COLS.AA);
+    const IDaddr = addr(rA, ID_COL);
+    const Xaddr = addr(rA, DEDUCTION_COLS.X);
 
     // 명부에 없는 이름이면 VLOOKUP이 #N/A를 내는데, 그러면 근무일수·총액 등 나머지 계산까지
     // 안 보이는 것처럼 느껴지니 IFERROR로 감싸 빈칸(직접 입력 가능한 칸)으로 떨어지게 한다.
-    ws[addr(rA, ID_COL)] = {
+    ws[IDaddr] = {
       t: "str",
       f: `IF(ISBLANK(${nameAddr}),"",IFERROR(VLOOKUP(${nameAddr},사원명부!$B$2:$C$${rosterLastRow},2,0),""))`,
     };
@@ -174,9 +201,18 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
     ws[Vaddr] = { t: "n", f: `${Taddr}*${Uaddr}` };
     ws[Waddr] = { t: "n", f: `IF(${Uaddr}>150000,ROUNDDOWN((${Uaddr}-150000)*2.7%*${Taddr},-1),"0")` };
     ws[WBaddr] = { t: "n", f: `ROUNDDOWN(${Waddr}/10,-1)` };
+    // 국민연금: 총액×4.75%, 만 60세 이상이면 0원
+    ws[Xaddr] = {
+      t: "n",
+      f: `IF(${ageAtLeastFormula(IDaddr, refYear, refMonth, refDay, 60)},0,ROUNDDOWN(${Vaddr}*4.75%,-1))`,
+    };
     ws[XBaddr] = { t: "n", f: `ROUNDDOWN(${Vaddr}*3.595%,-1)` };
     ws[Yaddr] = { t: "n", f: `ROUNDDOWN(${XBaddr}*13.14%,-1)` };
-    ws[YBaddr] = { t: "n", f: `ROUNDDOWN(${Vaddr}*0.9%,-1)` };
+    // 고용보험: 총액×0.9%, 만 65세 이상이면 0원
+    ws[YBaddr] = {
+      t: "n",
+      f: `IF(${ageAtLeastFormula(IDaddr, refYear, refMonth, refDay, 65)},0,ROUNDDOWN(${Vaddr}*0.9%,-1))`,
+    };
     ws[Zaddr] = { t: "n", f: `SUM(${Waddr}:${YBaddr})` };
     ws[AAaddr] = { t: "n", f: `${Vaddr}-${Zaddr}` };
     CENTER_COLS.forEach((c) => centerCell(ws, rA, c));
@@ -281,6 +317,7 @@ export async function GET(req: NextRequest) {
     const map = byCompany[p.company];
     p.laborLogs.forEach((l) => {
       if (l.type !== "인력") return;
+      if (EXCLUDED_JOB_TYPES.includes(l.jobType)) return;
       if (month && (l.date || "").slice(0, 7) !== month) return;
       const day = Number((l.date || "").slice(8, 10));
       if (!day) return;
