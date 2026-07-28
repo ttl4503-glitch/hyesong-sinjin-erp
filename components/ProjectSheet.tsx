@@ -908,6 +908,10 @@ export default function ProjectSheet({
                 )}
               </div>
             )}
+          </>
+        )}
+        {isEdit && project && (
+          <>
             <div className="ms-title">착공내역서 · 공종별 진행률</div>
             <div className="wi-box">
               {boqPreview ? (
