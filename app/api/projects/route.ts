@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getReqUser } from "@/lib/authServer";
+import { hideDeletedReceipts } from "@/lib/serverUtils";
 
 export async function GET(req: NextRequest) {
   // 로그인 사용자가 일반 직원이면 담당 현장만, 관리자(또는 헤더 없음)는 전체
@@ -10,13 +11,13 @@ export async function GET(req: NextRequest) {
     where,
     include: {
       milestones: true,
-      laborLogs: { where: { deletedAt: null }, include: { receipt: { select: { id: true } } } },
+      laborLogs: { where: { deletedAt: null }, include: { receipt: { select: { id: true, deletedAt: true } } } },
       workItems: true,
       dailyNotes: true,
     },
     orderBy: { createdAt: "desc" },
   });
-  return NextResponse.json(projects);
+  return NextResponse.json(projects.map(hideDeletedReceipts));
 }
 
 export async function POST(req: NextRequest) {

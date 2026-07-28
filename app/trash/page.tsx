@@ -6,7 +6,7 @@ import { api, TrashData, TrashType } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
 import { formatWon } from "@/lib/erp";
 
-const EMPTY: TrashData = { projects: [], workers: [], users: [], laborLogs: [] };
+const EMPTY: TrashData = { projects: [], workers: [], users: [], laborLogs: [], receipts: [] };
 
 function fmtWhen(iso: string) {
   if (!iso) return "";
@@ -80,7 +80,8 @@ export default function TrashPage() {
     );
   }
 
-  const total = data.projects.length + data.workers.length + data.users.length + data.laborLogs.length;
+  const total =
+    data.projects.length + data.workers.length + data.users.length + data.laborLogs.length + data.receipts.length;
 
   const rowStyle: React.CSSProperties = {
     display: "flex",
@@ -205,6 +206,33 @@ export default function TrashPage() {
                 </div>
               </div>
               {restoreBtn("laborlog", l.id)}
+            </div>
+          ))
+        )}
+
+        <div className="section-label" style={{ marginTop: 20 }}>
+          <span>🧾 삭제된 영수증·세금계산서</span>
+          <span>{data.receipts.length}건</span>
+        </div>
+        {data.receipts.length === 0 ? (
+          <div className="empty">삭제된 영수증·세금계산서가 없어요.</div>
+        ) : (
+          data.receipts.map((r) => (
+            <div key={r.id} style={rowStyle}>
+              <img
+                src={r.imageData}
+                alt="영수증"
+                style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
+              />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>
+                  [{r.company}/{r.projectName}] {r.type} · {r.name}
+                </div>
+                <div style={{ fontSize: 12, color: "#8a8371", marginTop: 2 }}>
+                  {r.date} · 삭제 {fmtWhen(r.deletedAt)}
+                </div>
+              </div>
+              {restoreBtn("receipt", r.id)}
             </div>
           ))
         )}

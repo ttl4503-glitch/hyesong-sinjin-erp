@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "관리자만 접근할 수 있어요." }, { status: 403 });
 
-  const [projects, workers, users, laborLogs] = await Promise.all([
+  const [projects, workers, users, laborLogs, receipts] = await Promise.all([
     prisma.project.findMany({
       where: { deletedAt: { not: null } },
       orderBy: { deletedAt: "desc" },
@@ -23,6 +23,12 @@ export async function GET(req: NextRequest) {
     prisma.laborLog.findMany({
       where: { deletedAt: { not: null } },
       include: { project: { select: { name: true, company: true } } },
+      orderBy: { deletedAt: "desc" },
+      take: 200,
+    }),
+    prisma.receipt.findMany({
+      where: { deletedAt: { not: null } },
+      include: { laborLog: { include: { project: { select: { name: true, company: true } } } } },
       orderBy: { deletedAt: "desc" },
       take: 200,
     }),
@@ -60,6 +66,17 @@ export async function GET(req: NextRequest) {
       amount: l.amount,
       deletedAt: l.deletedAt,
     })),
+    receipts: receipts.map((r) => ({
+      id: r.id,
+      laborLogId: r.laborLogId,
+      projectName: r.laborLog?.project?.name || "",
+      company: r.laborLog?.project?.company || "",
+      type: r.laborLog?.type || "",
+      name: r.laborLog?.name || "",
+      date: r.laborLog?.date || "",
+      imageData: r.imageData,
+      deletedAt: r.deletedAt,
+    })),
   });
 }
 
@@ -82,6 +99,8 @@ export async function POST(req: NextRequest) {
       await prisma.appUser.update({ where: { id }, data: { deletedAt: null } });
     } else if (type === "laborlog") {
       await prisma.laborLog.update({ where: { id }, data: { deletedAt: null } });
+    } else if (type === "receipt") {
+      await prisma.receipt.update({ where: { id }, data: { deletedAt: null } });
     } else {
       return NextResponse.json({ error: "알 수 없는 항목 유형이에요." }, { status: 400 });
     }

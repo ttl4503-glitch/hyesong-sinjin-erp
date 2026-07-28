@@ -5,7 +5,7 @@ const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB base64 data URL (client compresse
 
 export async function GET(_req: NextRequest, { params }: { params: { logId: string } }) {
   const receipt = await prisma.receipt.findUnique({ where: { laborLogId: params.logId } });
-  if (!receipt) return NextResponse.json({ error: "영수증이 없어요." }, { status: 404 });
+  if (!receipt || receipt.deletedAt) return NextResponse.json({ error: "영수증이 없어요." }, { status: 404 });
   return NextResponse.json({ imageData: receipt.imageData });
 }
 
@@ -21,13 +21,16 @@ export async function POST(req: NextRequest, { params }: { params: { logId: stri
 
   const receipt = await prisma.receipt.upsert({
     where: { laborLogId: params.logId },
-    update: { imageData },
+    update: { imageData, deletedAt: null },
     create: { laborLogId: params.logId, imageData },
   });
   return NextResponse.json({ id: receipt.id });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { logId: string } }) {
-  await prisma.receipt.deleteMany({ where: { laborLogId: params.logId } });
+  await prisma.receipt.updateMany({
+    where: { laborLogId: params.logId, deletedAt: null },
+    data: { deletedAt: new Date() },
+  });
   return NextResponse.json({ ok: true });
 }

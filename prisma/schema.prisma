@@ -129,9 +129,10 @@ model CheckinPhoto {
 }
 
 model Receipt {
-  id         String   @id @default(cuid())
-  laborLogId String   @unique
-  laborLog   LaborLog @relation(fields: [laborLogId], references: [id], onDelete: Cascade)
-  imageData  String   @db.Text // base64 data URL, compressed client-side before upload
-  createdAt  DateTime @default(now())
+  id         String    @id @default(cuid())
+  laborLogId String    @unique
+  laborLog   LaborLog  @relation(fields: [laborLogId], references: [id], onDelete: Cascade)
+  imageData  String    @db.Text // base64 data URL, compressed client-side before upload
+  deletedAt  DateTime? // 휴지통 (관리자 복구 가능) — null이면 정상
+  createdAt  DateTime  @default(now())
 }

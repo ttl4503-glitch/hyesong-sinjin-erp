@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { hideDeletedReceipts } from "@/lib/serverUtils";
 
 interface CommitItem {
   name: string;
@@ -59,11 +60,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     data: updateData,
     include: {
       milestones: true,
-      laborLogs: { where: { deletedAt: null }, include: { receipt: { select: { id: true } } } },
+      laborLogs: { where: { deletedAt: null }, include: { receipt: { select: { id: true, deletedAt: true } } } },
       workItems: true,
       dailyNotes: true,
     },
   });
 
-  return NextResponse.json(updated);
+  return NextResponse.json(hideDeletedReceipts(updated));
 }

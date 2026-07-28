@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { hideDeletedReceipts } from "@/lib/serverUtils";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json();
@@ -21,12 +22,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data,
     include: {
       milestones: true,
-      laborLogs: { where: { deletedAt: null }, include: { receipt: { select: { id: true } } } },
+      laborLogs: { where: { deletedAt: null }, include: { receipt: { select: { id: true, deletedAt: true } } } },
       workItems: true,
       dailyNotes: true,
     },
   });
-  return NextResponse.json(project);
+  return NextResponse.json(hideDeletedReceipts(project));
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {

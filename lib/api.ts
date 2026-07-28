@@ -196,7 +196,7 @@ export const api = {
     }).then(handle),
 };
 
-export type TrashType = "project" | "worker" | "user" | "laborlog";
+export type TrashType = "project" | "worker" | "user" | "laborlog" | "receipt";
 
 export interface TrashData {
   projects: { id: string; company: string; name: string; location: string; deletedAt: string }[];
@@ -211,6 +211,17 @@ export interface TrashData {
     name: string;
     date: string;
     amount: number;
+    deletedAt: string;
+  }[];
+  receipts: {
+    id: string;
+    laborLogId: string;
+    projectName: string;
+    company: string;
+    type: string;
+    name: string;
+    date: string;
+    imageData: string;
     deletedAt: string;
   }[];
 }
