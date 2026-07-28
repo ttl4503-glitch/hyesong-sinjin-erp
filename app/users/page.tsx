@@ -36,9 +36,9 @@ export default function UsersPage() {
 
   const sortedProjects = useMemo(
     () =>
-      [...projects].sort(
-        (a, b) => a.company.localeCompare(b.company) || a.name.localeCompare(b.name)
-      ),
+      projects
+        .filter((p) => !p.completed)
+        .sort((a, b) => a.company.localeCompare(b.company) || a.name.localeCompare(b.name)),
     [projects]
   );
 

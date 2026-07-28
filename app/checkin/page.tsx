@@ -7,21 +7,21 @@ type Info = { siteName: string; isFixedSite: boolean; completed: boolean; names:
 type EntryType = "인력" | "장비";
 type Result = { status: "checkin" | "checkout" | "already"; name: string; type: EntryType; siteName: string };
 
-// 휴대폰(브라우저) 1대당 오늘 이 현장에서 인력 출역은 한 사람만 등록할 수 있게
-// localStorage에 기록해둔다 (같은 사람의 퇴근 처리는 계속 허용).
-function lockKey(site: string, date: string) {
-  return `hs_checkin_lock_${site}_${date}`;
+// 휴대폰(브라우저) 1대당 오늘 이 현장에서 인력/장비 각각 하나만 등록할 수 있게
+// localStorage에 기록해둔다 (같은 사람·같은 장비의 퇴근 처리는 고정 현장에서 계속 허용).
+function lockKey(type: EntryType, site: string, date: string) {
+  return `hs_checkin_lock_${type}_${site}_${date}`;
 }
-function getLockedName(site: string, date: string): string {
+function getLockedName(type: EntryType, site: string, date: string): string {
   try {
-    return localStorage.getItem(lockKey(site, date)) || "";
+    return localStorage.getItem(lockKey(type, site, date)) || "";
   } catch {
     return "";
   }
 }
-function setLockedName(site: string, date: string, name: string) {
+function setLockedName(type: EntryType, site: string, date: string, name: string) {
   try {
-    localStorage.setItem(lockKey(site, date), name);
+    localStorage.setItem(lockKey(type, site, date), name);
   } catch {
     /* ignore */
   }
@@ -36,7 +36,9 @@ export default function CheckinPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
-  const [lockedName, setLockedNameState] = useState("");
+  const [lockedPerson, setLockedPerson] = useState("");
+  const [lockedEquip, setLockedEquip] = useState("");
+  const lockedName = type === "인력" ? lockedPerson : lockedEquip;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -46,9 +48,11 @@ export default function CheckinPage() {
       setLoadError("QR 주소에 현장 정보가 없어요. 관리자에게 새 QR을 요청하세요.");
       return;
     }
-    const locked = getLockedName(s, todayStr());
-    setLockedNameState(locked);
-    if (locked) setName(locked);
+    const person = getLockedName("인력", s, todayStr());
+    const equip = getLockedName("장비", s, todayStr());
+    setLockedPerson(person);
+    setLockedEquip(equip);
+    if (person) setName(person);
     fetch(`/api/checkin?site=${encodeURIComponent(s)}`)
       .then((r) => r.json())
       .then((d) => {
@@ -60,7 +64,7 @@ export default function CheckinPage() {
 
   function switchType(t: EntryType) {
     setType(t);
-    setName(t === "인력" ? lockedName : "");
+    setName(t === "인력" ? lockedPerson : lockedEquip);
     setError("");
   }
 
@@ -70,8 +74,12 @@ export default function CheckinPage() {
       setError(type === "장비" ? "장비명을 입력해주세요." : "이름을 선택(또는 입력)해주세요.");
       return;
     }
-    if (type === "인력" && lockedName && lockedName !== name.trim()) {
-      setError(`이 휴대폰으로는 오늘 이미 '${lockedName}'님이 출역했어요. 다른 분은 본인 휴대폰으로 QR을 찍어주세요.`);
+    if (lockedName && lockedName !== name.trim()) {
+      setError(
+        type === "장비"
+          ? `이 휴대폰으로는 오늘 이미 '${lockedName}' 장비가 등록됐어요. 다른 장비는 다른 휴대폰으로 찍어주세요.`
+          : `이 휴대폰으로는 오늘 이미 '${lockedName}'님이 출역했어요. 다른 분은 본인 휴대폰으로 QR을 찍어주세요.`
+      );
       return;
     }
     setBusy(true);
@@ -86,9 +94,10 @@ export default function CheckinPage() {
         setError(body.error || "처리에 실패했어요.");
         return;
       }
-      if (type === "인력" && site) {
-        setLockedName(site, todayStr(), name.trim());
-        setLockedNameState(name.trim());
+      if (site) {
+        setLockedName(type, site, todayStr(), name.trim());
+        if (type === "인력") setLockedPerson(name.trim());
+        else setLockedEquip(name.trim());
       }
       setResult(body);
     } catch {
@@ -153,7 +162,7 @@ export default function CheckinPage() {
             <button
               onClick={() => {
                 setResult(null);
-                setName(type === "인력" ? lockedName : "");
+                setName(lockedName);
               }}
               style={{
                 marginTop: 18,
@@ -249,7 +258,7 @@ export default function CheckinPage() {
           <input
             list={isEquip ? "equip-names" : "worker-names"}
             value={name}
-            disabled={!isEquip && !!lockedName}
+            disabled={!!lockedName}
             onChange={(e) => setName(e.target.value)}
             placeholder={isEquip ? "장비명 입력 (예: 굴삭기 0.6)" : "이름 선택 또는 입력"}
             style={{
@@ -259,12 +268,20 @@ export default function CheckinPage() {
               borderRadius: 8,
               fontSize: 17,
               marginTop: 6,
-              background: !isEquip && lockedName ? "#f0ede3" : "#fff",
+              background: lockedName ? "#f0ede3" : "#fff",
             }}
           />
-          {!isEquip && lockedName && (
+          {lockedName && (
             <div style={{ fontSize: 12.5, color: "#8a8371", marginTop: 6 }}>
-              이 휴대폰은 오늘 이 현장에서 <b>{lockedName}</b>님으로 등록됐어요. 다른 분은 각자의 휴대폰으로 QR을 찍어주세요.
+              {isEquip ? (
+                <>
+                  이 휴대폰은 오늘 이 현장에서 <b>{lockedName}</b> 장비로 등록됐어요. 다른 장비는 다른 휴대폰으로 찍어주세요.
+                </>
+              ) : (
+                <>
+                  이 휴대폰은 오늘 이 현장에서 <b>{lockedName}</b>님으로 등록됐어요. 다른 분은 각자의 휴대폰으로 QR을 찍어주세요.
+                </>
+              )}
             </div>
           )}
           <datalist id="worker-names">

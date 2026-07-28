@@ -827,7 +827,7 @@ export default function ProjectSheet({
           <button
             type="button"
             className="btn-ghost"
-            style={{ width: "auto", flex: "0 0 auto", padding: "6px 10px", fontSize: 13, marginTop: 0 }}
+            style={{ width: 130, flex: "0 0 auto", padding: "6px 10px", fontSize: 13, marginTop: 0 }}
             onClick={onClose}
           >
             ←
@@ -2248,7 +2248,7 @@ export default function ProjectSheet({
               <button
                 type="button"
                 className="btn-ghost"
-                style={{ width: "auto", flex: "0 0 auto", padding: "6px 10px", fontSize: 13, marginTop: 0 }}
+                style={{ width: 130, flex: "0 0 auto", padding: "6px 10px", fontSize: 13, marginTop: 0 }}
                 onClick={() => setShowQrModal(false)}
               >
                 ←
