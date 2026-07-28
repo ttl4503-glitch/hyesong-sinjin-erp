@@ -177,6 +177,7 @@ export default function ProjectSheet({
 
   const [staffUsers, setStaffUsers] = useState<ManagedUser[]>([]);
   const [staffError, setStaffError] = useState("");
+  const [showStaffAccess, setShowStaffAccess] = useState(false);
 
   useEffect(() => {
     if (!isEdit || !project || !authUser.isAdmin) return;
@@ -864,38 +865,49 @@ export default function ProjectSheet({
         </div>
         {isEdit && project && authUser.isAdmin && (
           <>
-            <div className="ms-title">담당 직원 지정</div>
-            <div className="wi-box">
-              {staffError && <div className="login-error">{staffError}</div>}
-              {staffUsers.length === 0 ? (
-                <div style={{ fontSize: 12.5, color: "#8a8371" }}>
-                  등록된 직원이 없어요. "사용자·권한 관리"에서 먼저 직원을 등록해주세요.
-                </div>
-              ) : (
-                staffUsers.map((s) => (
-                  <label
-                    key={s.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "8px 0",
-                      borderBottom: "1px solid var(--line)",
-                      fontSize: 14,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={s.projectIds.includes(project.id)}
-                      onChange={() => toggleStaffAccess(s)}
-                      style={{ width: 18, height: 18 }}
-                    />
-                    {s.name}
-                  </label>
-                ))
-              )}
+            <div
+              className="wi-summary"
+              style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
+              onClick={() => setShowStaffAccess((v) => !v)}
+            >
+              <span style={{ flex: 1 }}>
+                담당 직원 지정{staffUsers.length > 0 ? ` (${staffUsers.filter((s) => s.projectIds.includes(project.id)).length}/${staffUsers.length}명)` : ""}
+              </span>
+              <span className={`chevron ${showStaffAccess ? "open" : ""}`}>▸</span>
             </div>
+            {showStaffAccess && (
+              <div className="wi-box">
+                {staffError && <div className="login-error">{staffError}</div>}
+                {staffUsers.length === 0 ? (
+                  <div style={{ fontSize: 12.5, color: "#8a8371" }}>
+                    등록된 직원이 없어요. "사용자·권한 관리"에서 먼저 직원을 등록해주세요.
+                  </div>
+                ) : (
+                  staffUsers.map((s) => (
+                    <label
+                      key={s.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "8px 0",
+                        borderBottom: "1px solid var(--line)",
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={s.projectIds.includes(project.id)}
+                        onChange={() => toggleStaffAccess(s)}
+                        style={{ width: 18, height: 18 }}
+                      />
+                      {s.name}
+                    </label>
+                  ))
+                )}
+              </div>
+            )}
             <div className="ms-title">착공내역서 · 공종별 진행률</div>
             <div className="wi-box">
               {boqPreview ? (
