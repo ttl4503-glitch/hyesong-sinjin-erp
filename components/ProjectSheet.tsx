@@ -800,13 +800,23 @@ export default function ProjectSheet({
             borderBottom: "1px solid var(--line)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <h2 style={{ margin: 0 }}>{isEdit ? "공사 상세" : "새 공사 등록"}</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: "1 1 auto", overflow: "hidden" }}>
+            <h2 style={{ margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {isEdit ? "공사 상세" : "새 공사 등록"}
+            </h2>
             {isEdit && (
               <button
                 type="button"
                 className="btn-ghost"
-                style={{ padding: "4px 8px", fontSize: 15, marginTop: 0, lineHeight: 1, flexShrink: 0 }}
+                style={{
+                  width: "auto",
+                  flex: "0 0 auto",
+                  padding: "4px 8px",
+                  fontSize: 15,
+                  marginTop: 0,
+                  lineHeight: 1,
+                  whiteSpace: "nowrap",
+                }}
                 title="출역 QR 코드 보기"
                 onClick={() => setShowQrModal(true)}
               >
@@ -817,7 +827,7 @@ export default function ProjectSheet({
           <button
             type="button"
             className="btn-ghost"
-            style={{ padding: "6px 10px", fontSize: 13, flexShrink: 0 }}
+            style={{ width: "auto", flex: "0 0 auto", padding: "6px 10px", fontSize: 13, marginTop: 0 }}
             onClick={onClose}
           >
             ←
@@ -2222,12 +2232,23 @@ export default function ProjectSheet({
         >
           <div className="sheet" style={{ maxWidth: 420, textAlign: "center" }}>
             <div className="sheet-handle" />
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h2 style={{ margin: 0, fontSize: 16 }}>{project.name} 출역 QR</h2>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: 16,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  minWidth: 0,
+                }}
+              >
+                {project.name} 출역 QR
+              </h2>
               <button
                 type="button"
                 className="btn-ghost"
-                style={{ padding: "6px 10px", fontSize: 13, marginTop: 0, flexShrink: 0 }}
+                style={{ width: "auto", flex: "0 0 auto", padding: "6px 10px", fontSize: 13, marginTop: 0 }}
                 onClick={() => setShowQrModal(false)}
               >
                 ←
