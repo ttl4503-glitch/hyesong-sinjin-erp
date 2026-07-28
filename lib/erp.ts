@@ -51,6 +51,9 @@ export interface LaborLog {
   taxInvoice: boolean;
   workItemId: string | null;
   receipt?: { id: string } | null;
+  source?: string;
+  checkInAt?: string | null;
+  checkOutAt?: string | null;
 }
 
 export interface DailyNote {
@@ -70,6 +73,7 @@ export interface Project {
   progress: number;
   memo: string;
   completed: boolean;
+  isFixedSite?: boolean;
   workItemsTotal: number;
   workItemsFileName: string | null;
   milestones: Milestone[];

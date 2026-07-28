@@ -18,6 +18,7 @@ model Project {
   progress         Int      @default(0)
   memo             String   @default("")
   completed        Boolean  @default(false)
+  isFixedSite      Boolean  @default(false) // 고정 현장이면 QR 출역 시 출퇴근 시각 기록
   workItemsTotal   Float    @default(0)
   workItemsFileName String?
   createdAt        DateTime @default(now())
@@ -41,7 +42,7 @@ model AppUser {
 
 model Worker {
   id        String   @id @default(cuid())
-  name      String   @unique
+  name      String // 동명이인 등록 가능 — 주민번호(idFront)로 구분한다
   jobType   String   @default("")
   idFront   String   @default("") // 주민번호 (전체)
   phone     String   @default("")
@@ -104,6 +105,22 @@ model LaborLog {
   workItemId String?
   workItem   WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
   receipt    Receipt?
+
+  // QR 출역 관련
+  source        String        @default("manual") // manual | qr
+  checkInAt     DateTime? // 출근(첫 스캔) 시각
+  checkOutAt    DateTime? // 퇴근(마지막 스캔) 시각 — 고정 현장만
+  checkinPhoto  CheckinPhoto?
+}
+
+model CheckinPhoto {
+  id         String   @id @default(cuid())
+  laborLogId String   @unique
+  laborLog   LaborLog @relation(fields: [laborLogId], references: [id], onDelete: Cascade)
+  imageData  String   @db.Text // 셀카 (압축된 base64) — 본체와 분리 저장
+  gpsLat     Float?
+  gpsLng     Float?
+  createdAt  DateTime @default(now())
 }
 
 model Receipt {

@@ -126,8 +126,8 @@ export default function WorkersPage() {
 
   async function handleInlineSave() {
     if (!inlineEditId) return;
-    if (!inlineForm.name.trim()) {
-      setInlineError("이름을 입력해주세요.");
+    if (isFormBlank(inlineForm)) {
+      setInlineError("이름·주민번호 등 하나 이상은 입력해주세요.");
       return;
     }
     setInlineError("");
@@ -176,9 +176,13 @@ export default function WorkersPage() {
     setError("");
   }
 
+  function isFormBlank(f: typeof form) {
+    return !f.name.trim() && !f.jobType.trim() && !f.idFront.trim() && !f.phone.trim() && !f.bankName.trim() && !f.account.trim();
+  }
+
   async function handleSave() {
-    if (!form.name.trim()) {
-      setError("이름을 입력해주세요.");
+    if (isFormBlank(form)) {
+      setError("이름·주민번호 등 하나 이상은 입력해주세요.");
       return;
     }
     setError("");
@@ -454,6 +458,7 @@ export default function WorkersPage() {
           const colorById = new Map<string, string>();
           const groups = new Map<string, string[]>();
           workers.forEach((w) => {
+            if (!w.name.trim()) return; // 이름이 없으면 동명이인 판단 대상에서 제외
             if (!groups.has(w.name)) groups.set(w.name, []);
             groups.get(w.name)!.push(w.id);
           });
@@ -547,7 +552,8 @@ export default function WorkersPage() {
               >
                 <div>
                   <div className="uname">
-                    {w.name} {w.jobType && <span style={{ color: "#8a8371", fontWeight: 400 }}>· {w.jobType}</span>}
+                    {w.name || <span style={{ color: "#a09a89", fontWeight: 400 }}>(이름 미입력)</span>}{" "}
+                    {w.jobType && <span style={{ color: "#8a8371", fontWeight: 400 }}>· {w.jobType}</span>}
                     {dupColor && (
                       <span style={{ fontSize: 11, color: "#a3701f", marginLeft: 6, fontWeight: 700 }}>
                         ⚠ 동명이인
