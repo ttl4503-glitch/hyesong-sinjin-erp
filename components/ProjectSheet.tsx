@@ -21,6 +21,8 @@ import { compressImage } from "@/lib/compressImage";
 import { extractReceiptAmount } from "@/lib/receiptOcr";
 import { useAuth } from "@/components/AuthProvider";
 
+const QR_SCRIPT = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+
 const RECEIPT_TYPES = ["장비", "자재", "식대", "참", "운반비", "잡자재"];
 const TAX_INVOICE_TYPES = ["장비", "자재", "운반비", "잡자재"];
 const VENDOR_TYPES = ["자재", "식대", "운반비", "잡자재"];
@@ -212,6 +214,36 @@ export default function ProjectSheet({
   const [error, setError] = useState("");
   const [savedFlash, setSavedFlash] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrScriptReady, setQrScriptReady] = useState(false);
+  const qrContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!showQrModal) return;
+    if ((window as any).QRCode) {
+      setQrScriptReady(true);
+      return;
+    }
+    const existing = document.querySelector(`script[src="${QR_SCRIPT}"]`) as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener("load", () => setQrScriptReady(true));
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = QR_SCRIPT;
+    s.onload = () => setQrScriptReady(true);
+    document.body.appendChild(s);
+  }, [showQrModal]);
+
+  useEffect(() => {
+    if (!showQrModal || !qrScriptReady || !project) return;
+    const QRCode = (window as any).QRCode;
+    const el = qrContainerRef.current;
+    if (!QRCode || !el) return;
+    el.innerHTML = "";
+    const url = `${window.location.origin}/checkin?site=${project.id}`;
+    new QRCode(el, { text: url, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
+  }, [showQrModal, qrScriptReady, project?.id]);
 
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [logForm, setLogForm] = useState<LaborFormState>(emptyLaborForm());
@@ -768,14 +800,27 @@ export default function ProjectSheet({
             borderBottom: "1px solid var(--line)",
           }}
         >
-          <h2 style={{ margin: 0 }}>{isEdit ? "공사 상세" : "새 공사 등록"}</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <h2 style={{ margin: 0 }}>{isEdit ? "공사 상세" : "새 공사 등록"}</h2>
+            {isEdit && (
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ padding: "4px 8px", fontSize: 15, marginTop: 0, lineHeight: 1, flexShrink: 0 }}
+                title="출역 QR 코드 보기"
+                onClick={() => setShowQrModal(true)}
+              >
+                📱 QR
+              </button>
+            )}
+          </div>
           <button
             type="button"
             className="btn-ghost"
-            style={{ padding: "6px 14px", fontSize: 13 }}
+            style={{ padding: "6px 10px", fontSize: 13, flexShrink: 0 }}
             onClick={onClose}
           >
-            ← 뒤로가기
+            ←
           </button>
         </div>
 
@@ -2165,6 +2210,39 @@ export default function ProjectSheet({
             >
               닫기
             </button>
+          </div>
+        </div>
+      )}
+
+      {showQrModal && project && (
+        <div
+          className="overlay open"
+          style={{ zIndex: 200 }}
+          onClick={(e) => e.target === e.currentTarget && setShowQrModal(false)}
+        >
+          <div className="sheet" style={{ maxWidth: 420, textAlign: "center" }}>
+            <div className="sheet-handle" />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h2 style={{ margin: 0, fontSize: 16 }}>{project.name} 출역 QR</h2>
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ padding: "6px 10px", fontSize: 13, marginTop: 0, flexShrink: 0 }}
+                onClick={() => setShowQrModal(false)}
+              >
+                ←
+              </button>
+            </div>
+            <div style={{ fontSize: 12.5, color: "#8a8371", margin: "6px 0 14px" }}>
+              작업자가 이 QR을 휴대폰으로 찍고 이름만 고르면 오늘 작업일보에 자동 등록돼요.
+            </div>
+            <div
+              ref={qrContainerRef}
+              style={{ display: "inline-block", padding: 16, background: "#fff", borderRadius: 12 }}
+            />
+            {!qrScriptReady && (
+              <div style={{ fontSize: 12, color: "#8a8371", marginTop: 8 }}>QR 불러오는 중...</div>
+            )}
           </div>
         </div>
       )}

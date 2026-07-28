@@ -24,70 +24,74 @@ export default function ProjectCard({
   }
 
   return (
-    <div className="card" onClick={onClick}>
-      <div className="card-top">
-        <div>
-          <div className="card-title">{project.name}</div>
-          <div className="card-loc">{project.location || "위치 미입력"}</div>
+    <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+      <div className="card" style={{ flex: 1 }} onClick={onClick}>
+        <div className="card-top">
+          <div>
+            <div className="card-title">{project.name}</div>
+            <div className="card-loc">{project.location || "위치 미입력"}</div>
+          </div>
+          <div className={`tag ${tagClass}`}>{project.company}</div>
         </div>
-        <div className={`tag ${tagClass}`}>{project.company}</div>
+        <div className="gauge">
+          <div className="gauge-top">
+            <div className="gauge-period">
+              {fmtDate(project.startDate)} ~ {fmtDate(project.endDate)}
+            </div>
+            {!project.completed && (
+              <div className={`dday ${late ? "late" : ""}`} style={{ fontWeight: 700 }}>
+                남은 공기 {ddayText}
+              </div>
+            )}
+          </div>
+          <div className="ruler">
+            <div
+              className={`ruler-fill ${over ? "over" : late ? "late" : ""}`}
+              style={{ width: `${Math.min(100, progressVal)}%` }}
+            />
+            <div className="ruler-ticks">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="status-row" style={{ justifyContent: "flex-start", gap: 6 }}>
+          <span>공사금액 {project.contractAmount ? formatWon(project.contractAmount) + "원" : "미입력"}</span>
+          <span>/</span>
+          <span style={{ color: over ? "var(--danger)" : undefined, fontWeight: 700 }}>
+            누적 투입 {formatWon(totalInvestedCost(project))}원 ({progressVal}%)
+          </span>
+        </div>
       </div>
       {(onMoveUp || onMoveDown) && (
-        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "center", flexShrink: 0 }}>
           <button
             className="btn-ghost"
-            style={{ padding: "2px 10px", fontSize: 12, marginTop: 0 }}
+            style={{ padding: "3px 6px", fontSize: 11, marginTop: 0, lineHeight: 1, minWidth: 0 }}
             disabled={!onMoveUp}
+            title="위로"
             onClick={(e) => {
               e.stopPropagation();
               onMoveUp?.();
             }}
           >
-            ▲ 위로
+            ▲
           </button>
           <button
             className="btn-ghost"
-            style={{ padding: "2px 10px", fontSize: 12, marginTop: 0 }}
+            style={{ padding: "3px 6px", fontSize: 11, marginTop: 0, lineHeight: 1, minWidth: 0 }}
             disabled={!onMoveDown}
+            title="아래로"
             onClick={(e) => {
               e.stopPropagation();
               onMoveDown?.();
             }}
           >
-            ▼ 아래로
+            ▼
           </button>
         </div>
       )}
-      <div className="gauge">
-        <div className="gauge-top">
-          <div className="gauge-period">
-            {fmtDate(project.startDate)} ~ {fmtDate(project.endDate)}
-          </div>
-          {!project.completed && (
-            <div className={`dday ${late ? "late" : ""}`} style={{ fontWeight: 700 }}>
-              남은 공기 {ddayText}
-            </div>
-          )}
-        </div>
-        <div className="ruler">
-          <div
-            className={`ruler-fill ${over ? "over" : late ? "late" : ""}`}
-            style={{ width: `${Math.min(100, progressVal)}%` }}
-          />
-          <div className="ruler-ticks">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} />
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="status-row" style={{ justifyContent: "flex-start", gap: 6 }}>
-        <span>공사금액 {project.contractAmount ? formatWon(project.contractAmount) + "원" : "미입력"}</span>
-        <span>/</span>
-        <span style={{ color: over ? "var(--danger)" : undefined, fontWeight: 700 }}>
-          누적 투입 {formatWon(totalInvestedCost(project))}원 ({progressVal}%)
-        </span>
-      </div>
     </div>
   );
 }
