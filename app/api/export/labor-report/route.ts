@@ -138,9 +138,7 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
 
   const n = groups.length;
   const totalRowA = aoa.length;
-  const totalA = blankRow(SHEET_WIDTH);
-  totalA[0] = "합        계";
-  aoa.push(totalA);
+  aoa.push(blankRow(SHEET_WIDTH));
   aoa.push(blankRow(SHEET_WIDTH));
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -167,9 +165,11 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
     const Zaddr = addr(rA, DEDUCTION_COLS.Z);
     const AAaddr = addr(rA, DEDUCTION_COLS.AA);
 
+    // 명부에 없는 이름이면 VLOOKUP이 #N/A를 내는데, 그러면 근무일수·총액 등 나머지 계산까지
+    // 안 보이는 것처럼 느껴지니 IFERROR로 감싸 빈칸(직접 입력 가능한 칸)으로 떨어지게 한다.
     ws[addr(rA, ID_COL)] = {
       t: "str",
-      f: `IF(ISBLANK(${nameAddr}),"",VLOOKUP(${nameAddr},사원명부!$B$2:$C$${rosterLastRow},2,0))`,
+      f: `IF(ISBLANK(${nameAddr}),"",IFERROR(VLOOKUP(${nameAddr},사원명부!$B$2:$C$${rosterLastRow},2,0),""))`,
     };
     ws[Taddr] = { t: "n", f: `SUM(${addr(rA, DAY_COL_START)}:${addr(rB, DAY_COL_START + 15)})` };
     ws[Vaddr] = { t: "n", f: `${Taddr}*${Uaddr}` };
