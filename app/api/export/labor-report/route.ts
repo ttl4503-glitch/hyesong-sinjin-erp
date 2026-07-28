@@ -24,11 +24,21 @@ const TOTAL_COL = 21; // column V (총액)
 // 순번/성명/주민번호/근무일수/일당/총액/공제계/차인지급액 — 병합해서 가운데 정렬할 칸들
 const CENTER_COLS = [0, NAME_COL, ID_COL, DAYS_COL, RATE_COL, TOTAL_COL, DEDUCTION_COLS.Z, DEDUCTION_COLS.AA];
 const CENTER_STYLE = { alignment: { horizontal: "center", vertical: "center", wrapText: true } };
+const TITLE_STYLE = { font: { bold: true, sz: 18 }, alignment: { horizontal: "center", vertical: "center" } };
+const THIN_BORDER = { style: "thin", color: { rgb: "000000" } };
+const INFO_BOX_STYLE = {
+  alignment: { horizontal: "center", vertical: "center", wrapText: true },
+  border: { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER },
+};
 
-function centerCell(ws: XLSX.WorkSheet, r: number, c: number) {
+function styleCell(ws: XLSX.WorkSheet, r: number, c: number, style: object) {
   const a = addr(r, c);
   const existing = (ws as any)[a] || { t: "s", v: "" };
-  (ws as any)[a] = { ...existing, s: CENTER_STYLE };
+  (ws as any)[a] = { ...existing, s: style };
+}
+
+function centerCell(ws: XLSX.WorkSheet, r: number, c: number) {
+  styleCell(ws, r, c, CENTER_STYLE);
 }
 
 interface PersonGroup {
@@ -134,6 +144,10 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
   aoa.push(blankRow(SHEET_WIDTH));
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  styleCell(ws, 1, 0, TITLE_STYLE); // 회사명·연월 제목
+  for (let c = DEDUCTION_COLS.W; c <= DEDUCTION_COLS.Y; c++) styleCell(ws, 1, c, INFO_BOX_STYLE); // 근무기간 박스
+  for (let c = DEDUCTION_COLS.Z; c <= DEDUCTION_COLS.AA; c++) styleCell(ws, 1, c, INFO_BOX_STYLE); // 지급일 박스
 
   CENTER_COLS.forEach((c) => centerCell(ws, 3, c)); // 헤더 라벨 가운데 정렬
   centerCell(ws, 5, DEDUCTION_COLS.Z); // 공제계 라벨
