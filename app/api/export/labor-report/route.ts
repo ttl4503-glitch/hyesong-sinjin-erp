@@ -33,8 +33,11 @@ async function freezeSheets(buf: Buffer, sheetIndexes: number[], ySplit: number)
 // 사람×단가 조합마다 2행(1~15일 / 16~31일)을 쓰고, 근무일수·일당·총액·차인지급액과 공제
 // 관련 수식(갑근세/주민세/건강보험/장기요양/고용보험/공제계)을 심어 넣는다. 국민연금(총액의
 // 4.75%)과 고용보험(총액의 0.9%)은 각각 만 60세/65세 이상이면 0원 처리되도록 주민등록번호
-// 앞자리로 나이를 계산하는 수식이 포함되어 있다. 명부에 없는 이름은 나이를 알 수 없으니
-// 나이 조건은 미적용(정상 계산)으로 둔다. 식재팀/직원 직종은 일용노무비 집계 대상이 아니라 제외한다.
+// 앞자리로 나이를 계산하는 수식이 포함되어 있다. 건강보험·국민연금·장기요양은 추가로 그 달
+// 근무일수가 8일 이상이면서 총액이 220만원 이상일 때만 적용되고, 그 외에는 0원이다(장기요양은
+// 건강보험 금액에서 계산되므로 건강보험이 0원이면 자동으로 0원이 된다). 명부에 없는 이름은
+// 나이를 알 수 없으니 나이 조건은 미적용(정상 계산)으로 둔다. 식재팀/직원 직종은 일용노무비
+// 집계 대상이 아니라 제외한다.
 // 실제 원본 양식은 16~30일까지만 칸이 있어 31일 근무를 표시할 수 없었는데, 여기서는 원래
 // 비어있던 근무현황 마지막 칸(S열)을 31일 칸으로 써서 31일까지 표시되게 확장했다.
 
@@ -235,12 +238,15 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
     ws[Vaddr] = { t: "n", f: `${Taddr}*${Uaddr}` };
     ws[Waddr] = { t: "n", f: `IF(${Uaddr}>150000,ROUNDDOWN((${Uaddr}-150000)*2.7%*${Taddr},-1),"0")` };
     ws[WBaddr] = { t: "n", f: `ROUNDDOWN(${Waddr}/10,-1)` };
-    // 국민연금: 총액×4.75%, 만 60세 이상이면 0원
+    // 건강보험·국민연금·장기요양은 근무일수 8일 이상 & 총액 220만원 이상일 때만 적용
+    const meetsThreshold = `AND(${Taddr}>=8,${Vaddr}>=2200000)`;
+    // 국민연금: 총액×4.75%, 만 60세 이상이거나 기준(8일·220만원) 미달이면 0원
     ws[Xaddr] = {
       t: "n",
-      f: `IF(${ageAtLeastFormula(IDaddr, refYear, refMonth, refDay, 60)},0,ROUNDDOWN(${Vaddr}*4.75%,-1))`,
+      f: `IF(OR(${ageAtLeastFormula(IDaddr, refYear, refMonth, refDay, 60)},NOT(${meetsThreshold})),0,ROUNDDOWN(${Vaddr}*4.75%,-1))`,
     };
-    ws[XBaddr] = { t: "n", f: `ROUNDDOWN(${Vaddr}*3.595%,-1)` };
+    // 건강보험: 총액×3.595%, 기준(8일·220만원) 미달이면 0원
+    ws[XBaddr] = { t: "n", f: `IF(${meetsThreshold},ROUNDDOWN(${Vaddr}*3.595%,-1),0)` };
     ws[Yaddr] = { t: "n", f: `ROUNDDOWN(${XBaddr}*13.14%,-1)` };
     // 고용보험: 총액×0.9%, 만 65세 이상이면 0원
     ws[YBaddr] = {
