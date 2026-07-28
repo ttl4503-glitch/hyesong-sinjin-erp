@@ -44,6 +44,17 @@ function centerCell(ws: XLSX.WorkSheet, r: number, c: number) {
   styleCell(ws, r, c, CENTER_STYLE);
 }
 
+const CELL_BORDER = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+
+// 기존에 이미 적용된 정렬·글꼴 스타일은 그대로 두고 테두리만 얹는다 (표 전체에 격자를 그릴 때 사용).
+function addBorder(ws: XLSX.WorkSheet, r: number, c: number) {
+  const a = addr(r, c);
+  const existing = (ws as any)[a];
+  const prevStyle = existing?.s || {};
+  const cell = existing || { t: "s", v: "" };
+  (ws as any)[a] = { ...cell, s: { ...prevStyle, border: CELL_BORDER } };
+}
+
 interface PersonGroup {
   name: string;
   rate: number;
@@ -265,6 +276,11 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
   CENTER_COLS.forEach((c) => merges.push({ s: { r: totalRowA, c }, e: { r: totalRowA + 1, c } }));
   ws["!merges"] = merges;
   ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: totalRowA + 1, c: SHEET_WIDTH - 1 } });
+
+  // 표 전체(헤더~합계)에 얇은 격자 테두리를 그려서 행/열 구분이 잘 보이게 한다.
+  for (let r = 3; r <= totalRowA + 1; r++) {
+    for (let c = 0; c < SHEET_WIDTH; c++) addBorder(ws, r, c);
+  }
 
   const cols: { wch: number }[] = new Array(SHEET_WIDTH).fill({ wch: 9 });
   cols[0] = { wch: 5 }; // 순번
