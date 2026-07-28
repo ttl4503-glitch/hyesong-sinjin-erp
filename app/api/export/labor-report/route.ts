@@ -51,8 +51,22 @@ const DAYS_COL = 19; // column T (근무일수)
 const RATE_COL = 20; // column U (일당)
 const TOTAL_COL = 21; // column V (총액)
 const PHONE_COL = 27; // column AB (차인지급액 옆 연락처)
-// 순번/성명/주민번호/근무일수/일당/총액/공제계/차인지급액/연락처 — 병합해서 가운데 정렬할 칸들
-const CENTER_COLS = [0, NAME_COL, ID_COL, DAYS_COL, RATE_COL, TOTAL_COL, DEDUCTION_COLS.Z, DEDUCTION_COLS.AA, PHONE_COL];
+const BANK_COL = 28; // column AC (은행명)
+const ACCOUNT_COL = 29; // column AD (계좌번호)
+// 순번/성명/주민번호/근무일수/일당/총액/공제계/차인지급액/연락처/은행/계좌번호 — 병합해서 가운데 정렬할 칸들
+const CENTER_COLS = [
+  0,
+  NAME_COL,
+  ID_COL,
+  DAYS_COL,
+  RATE_COL,
+  TOTAL_COL,
+  DEDUCTION_COLS.Z,
+  DEDUCTION_COLS.AA,
+  PHONE_COL,
+  BANK_COL,
+  ACCOUNT_COL,
+];
 const CENTER_STYLE = { alignment: { horizontal: "center", vertical: "center", wrapText: true } };
 const TITLE_STYLE = { font: { bold: true, sz: 18 }, alignment: { horizontal: "center", vertical: "center" } };
 const THIN_BORDER = { style: "thin", color: { rgb: "000000" } };
@@ -86,7 +100,7 @@ interface PersonGroup {
   name: string;
   rate: number;
   jobType: string;
-  days: Set<number>;
+  days: Map<number, number>; // 일자 -> 그날 투입된 공수 (0.5공수처럼 소수도 그대로 반영)
 }
 
 function addr(r: number, c: number) {
@@ -115,7 +129,7 @@ function blankRow(width: number): any[] {
   return new Array(width).fill("");
 }
 
-const SHEET_WIDTH = 28; // columns A..AB
+const SHEET_WIDTH = 30; // columns A..AD
 
 function buildCompanySheet(companyName: string, month: string, groups: PersonGroup[], rosterLastRow: number) {
   const aoa: any[][] = [];
@@ -164,6 +178,8 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
   header[DEDUCTION_COLS.W] = "공  제  금  액";
   header[DEDUCTION_COLS.AA] = "차인\r\n지급액";
   header[PHONE_COL] = "연락처";
+  header[BANK_COL] = "은행";
+  header[ACCOUNT_COL] = "계좌번호";
   aoa.push(header); // row3 (Excel4)
 
   aoa.push(blankRow(SHEET_WIDTH)); // row4 (Excel5) blank
@@ -190,9 +206,9 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
     const rowB = blankRow(SHEET_WIDTH);
     rowA[0] = i + 1;
     rowA[NAME_COL] = g.name;
-    g.days.forEach((d) => {
-      if (d >= 1 && d <= 15) rowA[DAY_COL_START + (d - 1)] = 1;
-      else if (d >= 16 && d <= 31) rowB[DAY_COL_START + (d - 16)] = 1;
+    g.days.forEach((qty, d) => {
+      if (d >= 1 && d <= 15) rowA[DAY_COL_START + (d - 1)] = qty;
+      else if (d >= 16 && d <= 31) rowB[DAY_COL_START + (d - 16)] = qty;
     });
     rowA[RATE_COL] = g.rate;
     aoa.push(rowA);
@@ -236,10 +252,18 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
       t: "str",
       f: `IF(ISBLANK(${nameAddr}),"",IFERROR(VLOOKUP(${nameAddr},사원명부!$B$2:$C$${rosterLastRow},2,0),""))`,
     };
-    // 연락처는 차인지급액 옆 칸에 표시 — 사원명부 F열(연락처)을 이름으로 조회
+    // 연락처·은행·계좌번호는 차인지급액 옆 칸에 표시 — 사원명부에서 이름으로 조회
     ws[addr(rA, PHONE_COL)] = {
       t: "str",
       f: `IF(ISBLANK(${nameAddr}),"",IFERROR(VLOOKUP(${nameAddr},사원명부!$B$2:$F$${rosterLastRow},5,0),""))`,
+    };
+    ws[addr(rA, BANK_COL)] = {
+      t: "str",
+      f: `IF(ISBLANK(${nameAddr}),"",IFERROR(VLOOKUP(${nameAddr},사원명부!$B$2:$F$${rosterLastRow},3,0),""))`,
+    };
+    ws[addr(rA, ACCOUNT_COL)] = {
+      t: "str",
+      f: `IF(ISBLANK(${nameAddr}),"",IFERROR(VLOOKUP(${nameAddr},사원명부!$B$2:$F$${rosterLastRow},4,0),""))`,
     };
     ws[Taddr] = { t: "n", f: `SUM(${addr(rA, DAY_COL_START)}:${addr(rB, DAY_COL_START + 15)})` };
     ws[Vaddr] = { t: "n", f: `${Taddr}*${Uaddr}` };
@@ -304,6 +328,8 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
     { s: { r: 3, c: DEDUCTION_COLS.W }, e: { r: 4, c: DEDUCTION_COLS.Z } },
     { s: { r: 3, c: DEDUCTION_COLS.AA }, e: { r: 6, c: DEDUCTION_COLS.AA } },
     { s: { r: 3, c: PHONE_COL }, e: { r: 6, c: PHONE_COL } },
+    { s: { r: 3, c: BANK_COL }, e: { r: 6, c: BANK_COL } },
+    { s: { r: 3, c: ACCOUNT_COL }, e: { r: 6, c: ACCOUNT_COL } },
   ];
   for (let i = 0; i < n; i++) {
     const rA = firstPersonRow + i * 2;
@@ -329,6 +355,8 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
   cols[TOTAL_COL] = { wch: 12 }; // 총액
   cols[DEDUCTION_COLS.AA] = { wch: 12 }; // 차인지급액
   cols[PHONE_COL] = { wch: 14 }; // 연락처
+  cols[BANK_COL] = { wch: 10 }; // 은행
+  cols[ACCOUNT_COL] = { wch: 18 }; // 계좌번호
   ws["!cols"] = cols;
 
   const rows: { hpt: number }[] = [];
@@ -378,9 +406,11 @@ export async function GET(req: NextRequest) {
 
       const key = `${l.name}|${l.rate}`;
       if (!map.has(key)) {
-        map.set(key, { name: l.name, rate: l.rate, jobType: l.jobType, days: new Set() });
+        map.set(key, { name: l.name, rate: l.rate, jobType: l.jobType, days: new Map() });
       }
-      map.get(key)!.days.add(day);
+      const dayMap = map.get(key)!.days;
+      // 같은 날 여러 건 입력됐으면(작업일보 수정 등) 그날 공수를 합산한다.
+      dayMap.set(day, (dayMap.get(day) || 0) + (Number(l.qty) || 0));
     });
   });
 
