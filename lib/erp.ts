@@ -12,6 +12,7 @@ export interface Worker {
   name: string;
   jobType: string;
   idFront: string;
+  phone: string;
   bankName: string;
   account: string;
 }

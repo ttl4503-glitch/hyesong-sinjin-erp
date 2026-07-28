@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
       name,
       jobType: String(body.jobType || "").trim(),
       idFront: String(body.idFront || "").trim(),
+      phone: String(body.phone || "").trim(),
       bankName: String(body.bankName || "").trim(),
       account: String(body.account || "").trim(),
     },

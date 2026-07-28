@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
 
   const rows: (string | number)[][] = [
     [`집계 범위: ${scopeLabel}${month ? " · " + month : ""}`],
-    ["이름", "직종", "근무일수", "근무날짜", "단가", "총공수", "총금액(원)", "주민번호앞자리", "은행", "계좌번호"],
+    ["이름", "직종", "근무일수", "근무날짜", "단가", "총공수", "총금액(원)", "주민번호", "은행", "계좌번호"],
   ];
 
   let totalDays = 0;

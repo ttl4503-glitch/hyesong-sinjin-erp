@@ -6,7 +6,8 @@ import { api } from "@/lib/api";
 import { getKnownNames, getKnownJobTypes, type Project, type Worker } from "@/lib/erp";
 import { useAuth } from "@/components/AuthProvider";
 
-const ID_FRONT_RE = /\b(\d{6})[-\s]?\d{0,7}\b/;
+const ID_FULL_RE = /\b(\d{6})[-\s]?(\d{7})\b/;
+const ID_FRONT_ONLY_RE = /\b(\d{6})\b/;
 const ACCOUNT_RE = /\b(\d[\d-\s]{8,20}\d)\b/;
 
 // Lines on a Korean ID card that are NOT the person's name — used to filter
@@ -75,7 +76,7 @@ function extractBankName(text: string): string {
 }
 
 function emptyForm() {
-  return { name: "", jobType: "", idFront: "", bankName: "", account: "" };
+  return { name: "", jobType: "", idFront: "", phone: "", bankName: "", account: "" };
 }
 
 export default function WorkersPage() {
@@ -113,7 +114,14 @@ export default function WorkersPage() {
 
   function startEdit(w: Worker) {
     setEditingId(w.id);
-    setForm({ name: w.name, jobType: w.jobType, idFront: w.idFront, bankName: w.bankName, account: w.account });
+    setForm({
+      name: w.name,
+      jobType: w.jobType,
+      idFront: w.idFront,
+      phone: w.phone,
+      bankName: w.bankName,
+      account: w.account,
+    });
     setOcrText("");
     setError("");
   }
@@ -171,12 +179,14 @@ export default function WorkersPage() {
     try {
       const text = await runOcr(file);
       setOcrText(text);
-      const idMatch = text.match(ID_FRONT_RE);
+      const fullMatch = text.match(ID_FULL_RE);
+      const frontMatch = text.match(ID_FRONT_ONLY_RE);
+      const idNumber = fullMatch ? fullMatch[1] + fullMatch[2] : frontMatch ? frontMatch[1] : "";
       const name = extractName(text);
       setForm((f) => ({
         ...f,
         name: name || f.name,
-        idFront: idMatch ? idMatch[1] : f.idFront,
+        idFront: idNumber || f.idFront,
       }));
     } catch {
       setError("신분증 인식에 실패했어요. 직접 입력해주세요.");
@@ -292,21 +302,32 @@ export default function WorkersPage() {
         </div>
         <div className="row2">
           <div className="field">
-            <label>주민번호 앞자리 (6자리)</label>
+            <label>주민번호</label>
             <input
               value={form.idFront}
-              maxLength={6}
+              maxLength={14}
+              placeholder="901231-1234567"
               onChange={(e) => setForm({ ...form, idFront: e.target.value })}
             />
           </div>
           <div className="field">
+            <label>핸드폰번호</label>
+            <input
+              value={form.phone}
+              placeholder="010-1234-5678"
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="row2">
+          <div className="field">
             <label>은행명</label>
             <input value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} />
           </div>
-        </div>
-        <div className="field">
-          <label>계좌번호</label>
-          <input value={form.account} onChange={(e) => setForm({ ...form, account: e.target.value })} />
+          <div className="field">
+            <label>계좌번호</label>
+            <input value={form.account} onChange={(e) => setForm({ ...form, account: e.target.value })} />
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: 8 }}>
@@ -385,7 +406,12 @@ export default function WorkersPage() {
                 {w.name} {w.jobType && <span style={{ color: "#8a8371", fontWeight: 400 }}>· {w.jobType}</span>}
               </div>
               <div className="uemail">
-                {w.idFront ? `${w.idFront}-●●●●●●●` : "주민번호 미등록"} · {w.bankName} {w.account}
+                {w.idFront
+                  ? w.idFront.length > 6
+                    ? `${w.idFront.slice(0, 6)}-${"●".repeat(w.idFront.length - 6)}`
+                    : `${w.idFront}-●●●●●●●`
+                  : "주민번호 미등록"}
+                {w.phone ? ` · ${w.phone}` : ""} · {w.bankName} {w.account}
               </div>
             </div>
             <div style={{ display: "flex", gap: 10 }}>

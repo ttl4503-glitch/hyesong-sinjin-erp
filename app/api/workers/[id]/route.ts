@@ -10,6 +10,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (body.name !== undefined) data.name = String(body.name).trim();
   if (body.jobType !== undefined) data.jobType = String(body.jobType).trim();
   if (body.idFront !== undefined) data.idFront = String(body.idFront).trim();
+  if (body.phone !== undefined) data.phone = String(body.phone).trim();
   if (body.bankName !== undefined) data.bankName = String(body.bankName).trim();
   if (body.account !== undefined) data.account = String(body.account).trim();
 

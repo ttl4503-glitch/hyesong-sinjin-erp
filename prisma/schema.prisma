@@ -43,7 +43,8 @@ model Worker {
   id        String   @id @default(cuid())
   name      String   @unique
   jobType   String   @default("")
-  idFront   String   @default("") // 주민번호 앞자리 (생년월일, YYMMDD)
+  idFront   String   @default("") // 주민번호 (전체)
+  phone     String   @default("")
   bankName  String   @default("")
   account   String   @default("")
   createdAt DateTime @default(now())
