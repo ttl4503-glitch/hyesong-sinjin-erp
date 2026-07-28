@@ -227,7 +227,7 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
     const rB = rA + 1;
     CENTER_COLS.forEach((c) => merges.push({ s: { r: rA, c }, e: { r: rB, c } }));
   }
-  merges.push({ s: { r: totalRowA, c: 0 }, e: { r: totalRowA + 1, c: 0 } });
+  CENTER_COLS.forEach((c) => merges.push({ s: { r: totalRowA, c }, e: { r: totalRowA + 1, c } }));
   ws["!merges"] = merges;
   ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: totalRowA + 1, c: SHEET_WIDTH - 1 } });
 
