@@ -211,6 +211,7 @@ export default function ProjectSheet({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [savedFlash, setSavedFlash] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [logForm, setLogForm] = useState<LaborFormState>(emptyLaborForm());
@@ -362,7 +363,6 @@ export default function ProjectSheet({
 
   async function handleDeleteProject() {
     if (!project) return;
-    if (!confirm("이 공사를 삭제할까요? 되돌릴 수 없어요.")) return;
     try {
       await api.deleteProject(project.id);
       onDeleted(project.id);
@@ -472,6 +472,7 @@ export default function ProjectSheet({
 
   async function handleDeleteLog(logId: string) {
     if (!project) return;
+    if (!confirm("이 항목을 삭제할까요? 관리자가 휴지통에서 복구할 수 있어요.")) return;
     await api.deleteLaborLog(project.id, logId);
     onProjectUpdated({ ...project, laborLogs: project.laborLogs.filter((l) => l.id !== logId) });
     if (editingLogId === logId) cancelEditLog();
@@ -2055,10 +2056,33 @@ export default function ProjectSheet({
             ✓ 저장됐어요 — 계속 수정하실 수 있어요
           </div>
         )}
-        {isEdit && (
-          <button className="btn-danger" onClick={handleDeleteProject}>
+        {isEdit && authUser.isAdmin && !confirmingDelete && (
+          <button className="btn-danger" onClick={() => setConfirmingDelete(true)}>
             공사 삭제
           </button>
+        )}
+        {isEdit && authUser.isAdmin && confirmingDelete && (
+          <div
+            style={{
+              border: "1px solid var(--danger)",
+              borderRadius: 8,
+              padding: 12,
+              marginTop: 10,
+              background: "#fdf0ee",
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--danger)", marginBottom: 8 }}>
+              정말 삭제할까요? 되돌릴 수 없어요.
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn-danger" style={{ marginTop: 0 }} onClick={handleDeleteProject}>
+                네, 삭제합니다
+              </button>
+              <button className="btn-ghost" style={{ marginTop: 0 }} onClick={() => setConfirmingDelete(false)}>
+                취소
+              </button>
+            </div>
+          </div>
         )}
         <button className="btn-ghost" onClick={onClose}>
           닫기

@@ -6,7 +6,10 @@ import { requireAdmin } from "@/lib/authServer";
 export async function GET(req: NextRequest) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "관리자만 접근할 수 있어요." }, { status: 403 });
-  const users = await prisma.appUser.findMany({ orderBy: [{ isAdmin: "desc" }, { name: "asc" }] });
+  const users = await prisma.appUser.findMany({
+    where: { deletedAt: null },
+    orderBy: [{ isAdmin: "desc" }, { name: "asc" }],
+  });
   return NextResponse.json(
     users.map((u) => ({ id: u.id, name: u.name, pin: u.pin, isAdmin: u.isAdmin, projectIds: u.projectIds }))
   );

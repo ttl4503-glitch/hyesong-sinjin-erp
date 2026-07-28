@@ -181,11 +181,36 @@ export const api = {
   deleteUser: (id: string): Promise<{ ok: true }> =>
     fetch(`/api/users/${id}`, { method: "DELETE", headers: authHeaders() }).then(handle),
 
-  // 본인 비밀번호 변경 (로그인 상태에서 현재 비밀번호 확인 후 변경)
-  changePassword: (userId: string, currentPin: string, newPin: string): Promise<ManagedUser> =>
-    fetch(`/api/users/${userId}`, {
-      method: "PATCH",
+  // 오래된 출역 셀카 정리 (기본 90일 지난 것) — 출역·공수 기록은 유지
+  cleanupCheckinPhotos: (days = 90): Promise<{ deleted: number; days: number }> =>
+    fetch(`/api/checkin/cleanup?days=${days}`, { headers: authHeaders() }).then(handle),
+
+  // ===== 휴지통 (관리자 전용) =====
+  listTrash: (): Promise<TrashData> => fetch("/api/trash", { headers: authHeaders() }).then(handle),
+
+  restoreTrashItem: (type: TrashType, id: string): Promise<{ ok: true }> =>
+    fetch("/api/trash", {
+      method: "POST",
       headers: jsonHeaders(),
-      body: JSON.stringify({ currentPin, pin: newPin }),
+      body: JSON.stringify({ type, id }),
     }).then(handle),
 };
+
+export type TrashType = "project" | "worker" | "user" | "laborlog";
+
+export interface TrashData {
+  projects: { id: string; company: string; name: string; location: string; deletedAt: string }[];
+  workers: { id: string; name: string; jobType: string; idFront: string; deletedAt: string }[];
+  users: { id: string; name: string; isAdmin: boolean; deletedAt: string }[];
+  laborLogs: {
+    id: string;
+    projectId: string;
+    projectName: string;
+    company: string;
+    type: string;
+    name: string;
+    date: string;
+    amount: number;
+    deletedAt: string;
+  }[];
+}

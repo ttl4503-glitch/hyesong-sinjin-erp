@@ -377,7 +377,10 @@ export async function GET(req: NextRequest) {
   const reqUser = await getReqUser(req);
   const isAdmin = !!reqUser?.isAdmin;
 
-  let projects = await prisma.project.findMany({ include: { laborLogs: true } });
+  let projects = await prisma.project.findMany({
+    where: { deletedAt: null },
+    include: { laborLogs: { where: { deletedAt: null } } },
+  });
   if (!isAdmin) {
     const allowed = new Set(reqUser?.projectIds || []);
     projects = projects.filter((p) => allowed.has(p.id));
@@ -414,7 +417,7 @@ export async function GET(req: NextRequest) {
     });
   });
 
-  const workers = await prisma.worker.findMany({ orderBy: { name: "asc" } });
+  const workers = await prisma.worker.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" } });
   const rosterLastRow = 2 + workers.length;
 
   const wb = XLSX.utils.book_new();

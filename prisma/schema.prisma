@@ -21,6 +21,8 @@ model Project {
   isFixedSite      Boolean  @default(false) // 고정 현장이면 QR 출역 시 출퇴근 시각 기록
   workItemsTotal   Float    @default(0)
   workItemsFileName String?
+  sortOrder        Int      @default(0) // 진행중 공사 목록 순서 (작을수록 위)
+  deletedAt        DateTime? // 휴지통 (관리자 복구 가능) — null이면 정상
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -36,6 +38,7 @@ model AppUser {
   pin        String   @default("") // 4자리 숫자 로그인 비밀번호
   isAdmin    Boolean  @default(false)
   projectIds String[] @default([]) // 담당 현장(Project) id 목록 — 관리자는 무시하고 전체 접근
+  deletedAt  DateTime? // 휴지통 (관리자 복구 가능) — null이면 정상
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
@@ -48,6 +51,7 @@ model Worker {
   phone     String   @default("")
   bankName  String   @default("")
   account   String   @default("")
+  deletedAt DateTime? // 휴지통 (관리자 복구 가능) — null이면 정상
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -102,6 +106,7 @@ model LaborLog {
   note       String    @default("")
   vendor     String    @default("") // 업체명 (자재/식대/운반비 등)
   taxInvoice Boolean   @default(false)
+  deletedAt  DateTime? // 휴지통 (관리자 복구 가능) — null이면 정상
   workItemId String?
   workItem   WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
   receipt    Receipt?

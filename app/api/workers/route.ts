@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/authServer";
 export async function GET(req: NextRequest) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "관리자만 접근할 수 있어요." }, { status: 403 });
-  const workers = await prisma.worker.findMany({ orderBy: { name: "asc" } });
+  const workers = await prisma.worker.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" } });
   return NextResponse.json(workers);
 }
 

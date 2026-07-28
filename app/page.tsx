@@ -50,9 +50,34 @@ export default function HomePage() {
 
   const sortedList = useMemo(
     () =>
-      [...ongoingProjects].sort((a, b) => (a.endDate || "9999").localeCompare(b.endDate || "9999")),
+      [...ongoingProjects].sort(
+        (a, b) =>
+          (a.sortOrder || 0) - (b.sortOrder || 0) ||
+          (a.endDate || "9999").localeCompare(b.endDate || "9999")
+      ),
     [ongoingProjects]
   );
+
+  async function moveProject(id: string, dir: -1 | 1) {
+    const idx = sortedList.findIndex((p) => p.id === id);
+    const swapIdx = idx + dir;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= sortedList.length) return;
+    const reordered = [...sortedList];
+    [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
+    const updates = reordered
+      .map((p, i) => ({ id: p.id, sortOrder: i }))
+      .filter((u) => sortedList.find((p) => p.id === u.id)?.sortOrder !== u.sortOrder);
+    if (updates.length === 0) return;
+    setProjects((prev) =>
+      prev.map((p) => {
+        const u = updates.find((x) => x.id === p.id);
+        return u ? { ...p, sortOrder: u.sortOrder } : p;
+      })
+    );
+    await Promise.all(
+      updates.map((u) => api.updateProject(u.id, { sortOrder: u.sortOrder }).catch(() => {}))
+    );
+  }
   const sortedCompletedList = useMemo(
     () =>
       [...completedProjects].sort((a, b) => (b.endDate || "").localeCompare(a.endDate || "")),
@@ -411,6 +436,16 @@ export default function HomePage() {
               📲 출역 QR 관리
             </Link>
           </div>
+
+          <div style={{ padding: "8px 16px 0 16px" }}>
+            <Link
+              href="/trash"
+              className="export-btn"
+              style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
+            >
+              🗑 휴지통
+            </Link>
+          </div>
         </>
       )}
 
@@ -437,11 +472,15 @@ export default function HomePage() {
             )}
           </div>
         ) : (
-          sortedList.map((p) => (
+          sortedList.map((p, i) => (
             <ProjectCard
               key={p.id}
               project={p}
               onClick={() => setSheet({ mode: "edit", projectId: p.id })}
+              onMoveUp={sortedList.length > 1 && i > 0 ? () => moveProject(p.id, -1) : undefined}
+              onMoveDown={
+                sortedList.length > 1 && i < sortedList.length - 1 ? () => moveProject(p.id, 1) : undefined
+              }
             />
           ))
         )}

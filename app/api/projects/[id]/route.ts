@@ -13,16 +13,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (body.progress !== undefined) data.progress = Number(body.progress) || 0;
   if (body.memo !== undefined) data.memo = String(body.memo).trim();
   if (body.completed !== undefined) data.completed = Boolean(body.completed);
+  if (body.isFixedSite !== undefined) data.isFixedSite = Boolean(body.isFixedSite);
+  if (body.sortOrder !== undefined) data.sortOrder = Number(body.sortOrder) || 0;
 
   const project = await prisma.project.update({
     where: { id: params.id },
     data,
-    include: { milestones: true, laborLogs: { include: { receipt: { select: { id: true } } } }, workItems: true, dailyNotes: true },
+    include: {
+      milestones: true,
+      laborLogs: { where: { deletedAt: null }, include: { receipt: { select: { id: true } } } },
+      workItems: true,
+      dailyNotes: true,
+    },
   });
   return NextResponse.json(project);
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  await prisma.project.delete({ where: { id: params.id } });
+  await prisma.project.update({ where: { id: params.id }, data: { deletedAt: new Date() } });
   return NextResponse.json({ ok: true });
 }

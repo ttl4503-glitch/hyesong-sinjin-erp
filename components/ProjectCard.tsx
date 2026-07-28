@@ -3,9 +3,13 @@ import { Project, computeProgress, daysUntil, fmtDate, formatWon, totalInvestedC
 export default function ProjectCard({
   project,
   onClick,
+  onMoveUp,
+  onMoveDown,
 }: {
   project: Project;
   onClick: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const dleft = project.completed ? null : daysUntil(project.endDate);
   const progressVal = computeProgress(project);
@@ -28,6 +32,32 @@ export default function ProjectCard({
         </div>
         <div className={`tag ${tagClass}`}>{project.company}</div>
       </div>
+      {(onMoveUp || onMoveDown) && (
+        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+          <button
+            className="btn-ghost"
+            style={{ padding: "2px 10px", fontSize: 12, marginTop: 0 }}
+            disabled={!onMoveUp}
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoveUp?.();
+            }}
+          >
+            ▲ 위로
+          </button>
+          <button
+            className="btn-ghost"
+            style={{ padding: "2px 10px", fontSize: 12, marginTop: 0 }}
+            disabled={!onMoveDown}
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoveDown?.();
+            }}
+          >
+            ▼ 아래로
+          </button>
+        </div>
+      )}
       <div className="gauge">
         <div className="gauge-top">
           <div className="gauge-period">

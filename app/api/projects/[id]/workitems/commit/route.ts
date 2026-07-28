@@ -57,7 +57,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const updated = await prisma.project.update({
     where: { id: params.id },
     data: updateData,
-    include: { milestones: true, laborLogs: { include: { receipt: { select: { id: true } } } }, workItems: true, dailyNotes: true },
+    include: {
+      milestones: true,
+      laborLogs: { where: { deletedAt: null }, include: { receipt: { select: { id: true } } } },
+      workItems: true,
+      dailyNotes: true,
+    },
   });
 
   return NextResponse.json(updated);

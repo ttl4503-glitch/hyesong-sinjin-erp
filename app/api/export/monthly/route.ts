@@ -73,7 +73,10 @@ export async function GET(req: NextRequest) {
   const reqUser = await getReqUser(req);
   const isAdmin = !!reqUser?.isAdmin;
 
-  let projects = await prisma.project.findMany({ include: { laborLogs: true } });
+  let projects = await prisma.project.findMany({
+    where: { deletedAt: null },
+    include: { laborLogs: { where: { deletedAt: null } } },
+  });
   if (!isAdmin) {
     const allowed = new Set(reqUser?.projectIds || []);
     projects = projects.filter((p) => allowed.has(p.id));

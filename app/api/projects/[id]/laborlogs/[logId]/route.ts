@@ -36,6 +36,6 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string; logId: string } }
 ) {
-  await prisma.laborLog.delete({ where: { id: params.logId } });
+  await prisma.laborLog.update({ where: { id: params.logId }, data: { deletedAt: new Date() } });
   return NextResponse.json({ ok: true });
 }

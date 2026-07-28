@@ -8,7 +8,8 @@ export async function getReqUser(req: NextRequest) {
   const id = req.headers.get("x-user-id") || new URL(req.url).searchParams.get("uid");
   if (!id) return null;
   try {
-    return await prisma.appUser.findUnique({ where: { id } });
+    const u = await prisma.appUser.findUnique({ where: { id } });
+    return u && !u.deletedAt ? u : null;
   } catch {
     return null;
   }

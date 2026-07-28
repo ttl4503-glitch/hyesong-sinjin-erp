@@ -76,6 +76,7 @@ export interface Project {
   isFixedSite?: boolean;
   workItemsTotal: number;
   workItemsFileName: string | null;
+  sortOrder: number;
   milestones: Milestone[];
   laborLogs: LaborLog[];
   workItems: WorkItem[];

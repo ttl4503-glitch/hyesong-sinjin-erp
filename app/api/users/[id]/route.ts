@@ -58,11 +58,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!admin) return NextResponse.json({ error: "관리자만 접근할 수 있어요." }, { status: 403 });
   const target = await prisma.appUser.findUnique({ where: { id: params.id } });
   if (target?.isAdmin) {
-    const adminCount = await prisma.appUser.count({ where: { isAdmin: true } });
+    const adminCount = await prisma.appUser.count({ where: { isAdmin: true, deletedAt: null } });
     if (adminCount <= 1) {
       return NextResponse.json({ error: "마지막 관리자는 삭제할 수 없어요." }, { status: 400 });
     }
   }
-  await prisma.appUser.delete({ where: { id: params.id } });
+  await prisma.appUser.update({ where: { id: params.id }, data: { deletedAt: new Date() } });
   return NextResponse.json({ ok: true });
 }

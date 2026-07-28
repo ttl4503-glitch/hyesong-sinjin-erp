@@ -21,6 +21,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "관리자만 접근할 수 있어요." }, { status: 403 });
-  await prisma.worker.delete({ where: { id: params.id } });
+  await prisma.worker.update({ where: { id: params.id }, data: { deletedAt: new Date() } });
   return NextResponse.json({ ok: true });
 }
