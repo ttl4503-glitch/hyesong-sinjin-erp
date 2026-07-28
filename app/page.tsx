@@ -282,8 +282,7 @@ export default function HomePage() {
         )}
       </div>
 
-      {user.isAdmin && (
-        <>
+      <>
           <div style={{ padding: "10px 16px 0 16px", display: "flex", gap: 6 }}>
             <input
               type="month"
@@ -484,7 +483,10 @@ export default function HomePage() {
               {laborReportLabel}
             </a>
           </div>
+      </>
 
+      {user.isAdmin && (
+        <>
           <div style={{ padding: "8px 16px 0 16px" }}>
             <Link
               href="/workers"
