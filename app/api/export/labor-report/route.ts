@@ -204,6 +204,22 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
   ws["!merges"] = merges;
   ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: totalRowA + 1, c: SHEET_WIDTH - 1 } });
 
+  const cols: { wch: number }[] = new Array(SHEET_WIDTH).fill({ wch: 9 });
+  cols[0] = { wch: 5 }; // 순번
+  cols[NAME_COL] = { wch: 10 }; // 성명
+  cols[ID_COL] = { wch: 15 }; // 주민등록번호
+  for (let c = DAY_COL_START; c <= DAY_COL_START + 15; c++) cols[c] = { wch: 3.5 }; // 근무현황 1일치 칸
+  cols[DAYS_COL] = { wch: 6 }; // 근무일수
+  cols[RATE_COL] = { wch: 10 }; // 일당
+  cols[TOTAL_COL] = { wch: 12 }; // 총액
+  cols[DEDUCTION_COLS.AA] = { wch: 12 }; // 차인지급액
+  ws["!cols"] = cols;
+
+  const rows: { hpt: number }[] = [];
+  rows[1] = { hpt: 34 }; // 제목 행(2줄 텍스트)
+  rows[3] = { hpt: 30 }; // 헤더 라벨 행(근무일수/차인지급액 등 2줄 텍스트)
+  ws["!rows"] = rows;
+
   return { ws, totalRow: totalRowA };
 }
 
