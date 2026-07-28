@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as XLSX from "xlsx";
+// xlsx-js-style: SheetJS 커뮤니티판(xlsx)의 API 호환 포크로, 셀 스타일(가운데 정렬 등)을
+// 쓸 수 있다는 점만 다르다 — 이 리포트의 가운데 정렬 병합 셀 때문에 도입했다.
+import * as XLSX from "xlsx-js-style";
 import { prisma } from "@/lib/prisma";
 import { COMPANIES } from "@/lib/erp";
 import { getReqUser } from "@/lib/authServer";
 
 // 실제 회계팀 "일용임금대장" 양식을 그대로 재현한다 (\\172.30.1.200\98. 회계\일용직\일용임금대장).
-// 사람×단가 조합마다 2행(1~15일 / 16~30일)을 쓰고, 근무일수·일당·총액·차인지급액과 공제
+// 사람×단가 조합마다 2행(1~15일 / 16~31일)을 쓰고, 근무일수·일당·총액·차인지급액과 공제
 // 관련 수식(갑근세/주민세/건강보험/장기요양/고용보험/공제계)을 실제 파일에서 확인한 그대로
 // 셀 수식으로 심어 넣는다. 국민연금은 실제 파일에서도 값이 채워지지 않는 칸이라 비워둔다.
-// 31일이 있는 달도 실제 양식처럼 16~30일까지만 칸이 있고 31일 근무는 표시할 칸이 없다 —
-// 이는 회사가 쓰는 원본 양식 자체의 한계이며, 이 리포트는 그 양식을 그대로 재현한 것이다.
+// 실제 원본 양식은 16~30일까지만 칸이 있어 31일 근무를 표시할 수 없었는데, 여기서는 원래
+// 비어있던 근무현황 마지막 칸(S열)을 31일 칸으로 써서 31일까지 표시되게 확장했다.
 
 const EXCLUDED_JOB_TYPES = ["식재팀", "직원"];
 const DEDUCTION_COLS = { W: 22, X: 23, Y: 24, Z: 25, AA: 26 } as const;
@@ -19,6 +21,15 @@ const ID_COL = 2; // column C
 const DAYS_COL = 19; // column T (근무일수)
 const RATE_COL = 20; // column U (일당)
 const TOTAL_COL = 21; // column V (총액)
+// 순번/성명/주민번호/근무일수/일당/총액/공제계/차인지급액 — 병합해서 가운데 정렬할 칸들
+const CENTER_COLS = [0, NAME_COL, ID_COL, DAYS_COL, RATE_COL, TOTAL_COL, DEDUCTION_COLS.Z, DEDUCTION_COLS.AA];
+const CENTER_STYLE = { alignment: { horizontal: "center", vertical: "center", wrapText: true } };
+
+function centerCell(ws: XLSX.WorkSheet, r: number, c: number) {
+  const a = addr(r, c);
+  const existing = (ws as any)[a] || { t: "s", v: "" };
+  (ws as any)[a] = { ...existing, s: CENTER_STYLE };
+}
 
 interface PersonGroup {
   name: string;
@@ -93,7 +104,7 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
   aoa.push(sub1); // row5 (Excel6)
 
   const sub2 = blankRow(SHEET_WIDTH);
-  for (let d = 16; d <= 30; d++) sub2[DAY_COL_START + (d - 16)] = d;
+  for (let d = 16; d <= 31; d++) sub2[DAY_COL_START + (d - 16)] = d;
   sub2[DEDUCTION_COLS.W] = "주민세";
   sub2[DEDUCTION_COLS.X] = "건강보험";
   sub2[DEDUCTION_COLS.Y] = "고용보험";
@@ -108,8 +119,7 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
     rowA[NAME_COL] = g.name;
     g.days.forEach((d) => {
       if (d >= 1 && d <= 15) rowA[DAY_COL_START + (d - 1)] = 1;
-      else if (d >= 16 && d <= 30) rowB[DAY_COL_START + (d - 16)] = 1;
-      // 31일은 원본 양식에도 칸이 없어 표시하지 않음
+      else if (d >= 16 && d <= 31) rowB[DAY_COL_START + (d - 16)] = 1;
     });
     rowA[RATE_COL] = g.rate;
     aoa.push(rowA);
@@ -124,6 +134,9 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
   aoa.push(blankRow(SHEET_WIDTH));
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  CENTER_COLS.forEach((c) => centerCell(ws, 3, c)); // 헤더 라벨 가운데 정렬
+  centerCell(ws, 5, DEDUCTION_COLS.Z); // 공제계 라벨
 
   for (let i = 0; i < n; i++) {
     const rA = firstPersonRow + i * 2;
@@ -153,6 +166,7 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
     ws[YBaddr] = { t: "n", f: `ROUNDDOWN(${Vaddr}*0.9%,-1)` };
     ws[Zaddr] = { t: "n", f: `SUM(${Waddr}:${YBaddr})` };
     ws[AAaddr] = { t: "n", f: `${Vaddr}-${Zaddr}` };
+    CENTER_COLS.forEach((c) => centerCell(ws, rA, c));
   }
 
   if (n > 0) {
@@ -178,6 +192,7 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
     ws[addr(totalRowA, DEDUCTION_COLS.Z)] = { t: "n", v: 0 };
     ws[addr(totalRowA, DEDUCTION_COLS.AA)] = { t: "n", v: 0 };
   }
+  CENTER_COLS.forEach((c) => centerCell(ws, totalRowA, c));
 
   const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [
     { s: { r: 1, c: 0 }, e: { r: 1, c: 21 } },
@@ -196,9 +211,7 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
   for (let i = 0; i < n; i++) {
     const rA = firstPersonRow + i * 2;
     const rB = rA + 1;
-    [0, NAME_COL, ID_COL, DAYS_COL, RATE_COL, TOTAL_COL, DEDUCTION_COLS.Z, DEDUCTION_COLS.AA].forEach((c) =>
-      merges.push({ s: { r: rA, c }, e: { r: rB, c } })
-    );
+    CENTER_COLS.forEach((c) => merges.push({ s: { r: rA, c }, e: { r: rB, c } }));
   }
   merges.push({ s: { r: totalRowA, c: 0 }, e: { r: totalRowA + 1, c: 0 } });
   ws["!merges"] = merges;
