@@ -79,6 +79,9 @@ function emptyForm() {
   return { name: "", jobType: "", idFront: "", phone: "", bankName: "", account: "" };
 }
 
+// 동명이인을 구분해서 보여줄 배경색 — 같은 이름이 여러 명이면 이름별로 색을 하나씩 배정한다.
+const DUP_COLORS = ["#ffe0e0", "#fff3cd", "#d4edda", "#d1ecf1", "#ece0f8"];
+
 export default function WorkersPage() {
   const { user } = useAuth();
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -93,6 +96,18 @@ export default function WorkersPage() {
   const [ocrText, setOcrText] = useState("");
   const idFileInputRef = useRef<HTMLInputElement>(null);
   const bankFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+
+  function toggleReveal(id: string) {
+    setRevealedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (!user.isAdmin) {
@@ -397,33 +412,87 @@ export default function WorkersPage() {
         <span>{workers.length}명</span>
       </div>
 
+      <div style={{ padding: "0 16px 10px 16px" }}>
+        <input
+          type="text"
+          placeholder="🔍 이름·직종·연락처로 조회"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "9px 12px",
+            border: "1px solid var(--line)",
+            borderRadius: 8,
+            fontSize: 13,
+            background: "#fff",
+          }}
+        />
+      </div>
+
       <div className="list" style={{ paddingBottom: 40 }}>
-        {workers.length === 0 && <div className="empty">등록된 인원이 없어요.</div>}
-        {workers.map((w) => (
-          <div className="user-row" key={w.id}>
-            <div>
-              <div className="uname">
-                {w.name} {w.jobType && <span style={{ color: "#8a8371", fontWeight: 400 }}>· {w.jobType}</span>}
+        {(() => {
+          // 동명이인 그룹마다 색을 하나씩 배정 — 같은 이름이 여러 명이면 구분되게 보여준다.
+          const colorById = new Map<string, string>();
+          const groups = new Map<string, string[]>();
+          workers.forEach((w) => {
+            if (!groups.has(w.name)) groups.set(w.name, []);
+            groups.get(w.name)!.push(w.id);
+          });
+          groups.forEach((ids) => {
+            if (ids.length > 1) ids.forEach((id, i) => colorById.set(id, DUP_COLORS[i % DUP_COLORS.length]));
+          });
+
+          const q = search.trim();
+          const filtered = q
+            ? workers.filter((w) => w.name.includes(q) || w.jobType.includes(q) || w.phone.includes(q))
+            : workers;
+
+          if (filtered.length === 0) {
+            return <div className="empty">{q ? "검색 결과가 없어요." : "등록된 인원이 없어요."}</div>;
+          }
+
+          return filtered.map((w) => {
+            const dupColor = colorById.get(w.id);
+            const revealed = revealedIds.has(w.id);
+            return (
+              <div
+                className="user-row"
+                key={w.id}
+                style={dupColor ? { background: dupColor } : undefined}
+                onClick={() => toggleReveal(w.id)}
+              >
+                <div>
+                  <div className="uname">
+                    {w.name} {w.jobType && <span style={{ color: "#8a8371", fontWeight: 400 }}>· {w.jobType}</span>}
+                    {dupColor && (
+                      <span style={{ fontSize: 11, color: "#a3701f", marginLeft: 6, fontWeight: 700 }}>
+                        ⚠ 동명이인
+                      </span>
+                    )}
+                  </div>
+                  <div className="uemail">
+                    {w.idFront
+                      ? revealed
+                        ? w.idFront
+                        : w.idFront.length > 6
+                        ? `${w.idFront.slice(0, 6)}-${"●".repeat(w.idFront.length - 6)}`
+                        : `${w.idFront}-●●●●●●●`
+                      : "주민번호 미등록"}
+                    {w.phone ? ` · ${w.phone}` : ""} · {w.bankName} {w.account}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 10 }} onClick={(e) => e.stopPropagation()}>
+                  <div className="lg-edit" onClick={() => startEdit(w)}>
+                    ✎
+                  </div>
+                  <div className="lg-del" onClick={() => handleDelete(w.id)}>
+                    ✕
+                  </div>
+                </div>
               </div>
-              <div className="uemail">
-                {w.idFront
-                  ? w.idFront.length > 6
-                    ? `${w.idFront.slice(0, 6)}-${"●".repeat(w.idFront.length - 6)}`
-                    : `${w.idFront}-●●●●●●●`
-                  : "주민번호 미등록"}
-                {w.phone ? ` · ${w.phone}` : ""} · {w.bankName} {w.account}
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <div className="lg-edit" onClick={() => startEdit(w)}>
-                ✎
-              </div>
-              <div className="lg-del" onClick={() => handleDelete(w.id)}>
-                ✕
-              </div>
-            </div>
-          </div>
-        ))}
+            );
+          });
+        })()}
       </div>
     </div>
   );

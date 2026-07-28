@@ -50,8 +50,9 @@ const ID_COL = 2; // column C
 const DAYS_COL = 19; // column T (근무일수)
 const RATE_COL = 20; // column U (일당)
 const TOTAL_COL = 21; // column V (총액)
-// 순번/성명/주민번호/근무일수/일당/총액/공제계/차인지급액 — 병합해서 가운데 정렬할 칸들
-const CENTER_COLS = [0, NAME_COL, ID_COL, DAYS_COL, RATE_COL, TOTAL_COL, DEDUCTION_COLS.Z, DEDUCTION_COLS.AA];
+const PHONE_COL = 27; // column AB (차인지급액 옆 연락처)
+// 순번/성명/주민번호/근무일수/일당/총액/공제계/차인지급액/연락처 — 병합해서 가운데 정렬할 칸들
+const CENTER_COLS = [0, NAME_COL, ID_COL, DAYS_COL, RATE_COL, TOTAL_COL, DEDUCTION_COLS.Z, DEDUCTION_COLS.AA, PHONE_COL];
 const CENTER_STYLE = { alignment: { horizontal: "center", vertical: "center", wrapText: true } };
 const TITLE_STYLE = { font: { bold: true, sz: 18 }, alignment: { horizontal: "center", vertical: "center" } };
 const THIN_BORDER = { style: "thin", color: { rgb: "000000" } };
@@ -114,7 +115,7 @@ function blankRow(width: number): any[] {
   return new Array(width).fill("");
 }
 
-const SHEET_WIDTH = 27; // columns A..AA
+const SHEET_WIDTH = 28; // columns A..AB
 
 function buildCompanySheet(companyName: string, month: string, groups: PersonGroup[], rosterLastRow: number) {
   const aoa: any[][] = [];
@@ -162,6 +163,7 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
   header[TOTAL_COL] = "총  액";
   header[DEDUCTION_COLS.W] = "공  제  금  액";
   header[DEDUCTION_COLS.AA] = "차인\r\n지급액";
+  header[PHONE_COL] = "연락처";
   aoa.push(header); // row3 (Excel4)
 
   aoa.push(blankRow(SHEET_WIDTH)); // row4 (Excel5) blank
@@ -234,6 +236,11 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
       t: "str",
       f: `IF(ISBLANK(${nameAddr}),"",IFERROR(VLOOKUP(${nameAddr},사원명부!$B$2:$C$${rosterLastRow},2,0),""))`,
     };
+    // 연락처는 차인지급액 옆 칸에 표시 — 사원명부 F열(연락처)을 이름으로 조회
+    ws[addr(rA, PHONE_COL)] = {
+      t: "str",
+      f: `IF(ISBLANK(${nameAddr}),"",IFERROR(VLOOKUP(${nameAddr},사원명부!$B$2:$F$${rosterLastRow},5,0),""))`,
+    };
     ws[Taddr] = { t: "n", f: `SUM(${addr(rA, DAY_COL_START)}:${addr(rB, DAY_COL_START + 15)})` };
     ws[Vaddr] = { t: "n", f: `${Taddr}*${Uaddr}` };
     ws[Waddr] = { t: "n", f: `IF(${Uaddr}>150000,ROUNDDOWN((${Uaddr}-150000)*2.7%*${Taddr},-1),"0")` };
@@ -296,6 +303,7 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
     { s: { r: 3, c: TOTAL_COL }, e: { r: 6, c: TOTAL_COL } },
     { s: { r: 3, c: DEDUCTION_COLS.W }, e: { r: 4, c: DEDUCTION_COLS.Z } },
     { s: { r: 3, c: DEDUCTION_COLS.AA }, e: { r: 6, c: DEDUCTION_COLS.AA } },
+    { s: { r: 3, c: PHONE_COL }, e: { r: 6, c: PHONE_COL } },
   ];
   for (let i = 0; i < n; i++) {
     const rA = firstPersonRow + i * 2;
@@ -320,6 +328,7 @@ function buildCompanySheet(companyName: string, month: string, groups: PersonGro
   cols[RATE_COL] = { wch: 10 }; // 일당
   cols[TOTAL_COL] = { wch: 12 }; // 총액
   cols[DEDUCTION_COLS.AA] = { wch: 12 }; // 차인지급액
+  cols[PHONE_COL] = { wch: 14 }; // 연락처
   ws["!cols"] = cols;
 
   const rows: { hpt: number }[] = [];
