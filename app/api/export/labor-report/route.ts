@@ -13,7 +13,6 @@ import { getReqUser } from "@/lib/authServer";
 // 실제 원본 양식은 16~30일까지만 칸이 있어 31일 근무를 표시할 수 없었는데, 여기서는 원래
 // 비어있던 근무현황 마지막 칸(S열)을 31일 칸으로 써서 31일까지 표시되게 확장했다.
 
-const EXCLUDED_JOB_TYPES = ["식재팀", "직원"];
 const DEDUCTION_COLS = { W: 22, X: 23, Y: 24, Z: 25, AA: 26 } as const;
 const DAY_COL_START = 3; // column D
 const NAME_COL = 1; // column B
@@ -282,7 +281,6 @@ export async function GET(req: NextRequest) {
     const map = byCompany[p.company];
     p.laborLogs.forEach((l) => {
       if (l.type !== "인력") return;
-      if (EXCLUDED_JOB_TYPES.includes(l.jobType)) return;
       if (month && (l.date || "").slice(0, 7) !== month) return;
       const day = Number((l.date || "").slice(8, 10));
       if (!day) return;
