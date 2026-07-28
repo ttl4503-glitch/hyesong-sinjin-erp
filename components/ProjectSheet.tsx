@@ -39,7 +39,7 @@ interface DraftDailyRow {
   type: string;
   jobType: string;
   name: string;
-  qty: number;
+  qty: string;
   unit: string;
   rate: number;
   amount: number;
@@ -55,7 +55,7 @@ function emptyDailyRow(type: string): DraftDailyRow {
     type,
     jobType: "",
     name: "",
-    qty: type === "인력" || type === "장비" ? 1 : 0,
+    qty: type === "인력" || type === "장비" ? "1" : "",
     unit: DEFAULT_UNIT[type] || "",
     rate: 0,
     amount: 0,
@@ -542,10 +542,18 @@ export default function ProjectSheet({
       prev.map((r) => {
         if (r._key !== key) return r;
         if (field === "taxInvoice") return { ...r, taxInvoice: Boolean(value) };
-        if (field === "qty" || field === "rate" || field === "amount") {
+        if (field === "qty") {
+          const next = { ...r, qty: String(value).replace(/[^0-9.]/g, "") };
+          const isLabor = r.type === "인력" || r.type === "장비";
+          if (isLabor) {
+            next.amount = (Number(next.qty) || 0) * (Number(next.rate) || 0);
+          }
+          return next;
+        }
+        if (field === "rate" || field === "amount") {
           const next = { ...r, [field]: Number(value) || 0 };
           const isLabor = r.type === "인력" || r.type === "장비";
-          if (isLabor && (field === "qty" || field === "rate")) {
+          if (isLabor && field === "rate") {
             next.amount = (Number(next.qty) || 0) * (Number(next.rate) || 0);
           }
           return next;
@@ -610,7 +618,7 @@ export default function ProjectSheet({
 
   async function commitDaily() {
     if (!project) return;
-    const valid = dailyRows.filter((r) => r.name.trim() && (r.qty > 0 || r.amount > 0));
+    const valid = dailyRows.filter((r) => r.name.trim() && (Number(r.qty) > 0 || r.amount > 0));
     if (valid.length === 0 && !dailyNoteText.trim()) {
       setDailyError("이름과 공수(또는 금액)를 입력하거나, 작업내용을 적어주세요.");
       return;
@@ -1129,10 +1137,10 @@ export default function ProjectSheet({
                             />
                           )}
                           <input
-                            type="number"
-                            step={0.5}
-                            placeholder="공수"
-                            value={r.qty || ""}
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="공수 (예: 0.5)"
+                            value={r.qty}
                             onChange={(e) => updateDailyRow(r._key, "qty", e.target.value)}
                           />
                           <input
@@ -1301,9 +1309,10 @@ export default function ProjectSheet({
                                 onChange={(e) => updateDailyRow(r._key, "unit", e.target.value)}
                               />
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 placeholder="수량"
-                                value={r.qty || ""}
+                                value={r.qty}
                                 onChange={(e) => updateDailyRow(r._key, "qty", e.target.value)}
                               />
                               <input
