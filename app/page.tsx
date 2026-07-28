@@ -25,45 +25,6 @@ export default function HomePage() {
   const [monthlyScope, setMonthlyScope] = useState<"all" | "company" | "project">("all");
   const [monthlyCompany, setMonthlyCompany] = useState(COMPANIES[0]);
   const [monthlyProjectId, setMonthlyProjectId] = useState("");
-  const [showPwForm, setShowPwForm] = useState(false);
-  const [pwCurrent, setPwCurrent] = useState("");
-  const [pwNew, setPwNew] = useState("");
-  const [pwNew2, setPwNew2] = useState("");
-  const [pwError, setPwError] = useState("");
-  const [pwBusy, setPwBusy] = useState(false);
-  const [pwSuccess, setPwSuccess] = useState(false);
-
-  async function handleChangePassword() {
-    setPwError("");
-    if (!/^\d{4}$/.test(pwCurrent)) {
-      setPwError("현재 비밀번호를 입력해주세요.");
-      return;
-    }
-    if (!/^\d{4}$/.test(pwNew)) {
-      setPwError("새 비밀번호는 숫자 4자리예요.");
-      return;
-    }
-    if (pwNew !== pwNew2) {
-      setPwError("새 비밀번호가 서로 달라요.");
-      return;
-    }
-    setPwBusy(true);
-    try {
-      await api.changePassword(user.id, pwCurrent, pwNew);
-      setPwSuccess(true);
-      setPwCurrent("");
-      setPwNew("");
-      setPwNew2("");
-      setTimeout(() => {
-        setPwSuccess(false);
-        setShowPwForm(false);
-      }, 1500);
-    } catch (e: any) {
-      setPwError(e.message || "변경 중 오류가 발생했어요.");
-    } finally {
-      setPwBusy(false);
-    }
-  }
 
   useEffect(() => {
     // 서버가 로그인 사용자 권한에 따라 담당 현장만 내려줍니다 (관리자는 전체).
@@ -207,16 +168,6 @@ export default function HomePage() {
               </Link>
             )}
             <span
-              onClick={() => {
-                setShowPwForm((v) => !v);
-                setPwError("");
-                setPwSuccess(false);
-              }}
-              style={{ cursor: "pointer", textDecoration: "underline" }}
-            >
-              비밀번호 변경
-            </span>
-            <span
               onClick={logout}
               style={{ cursor: "pointer", textDecoration: "underline" }}
             >
@@ -224,65 +175,10 @@ export default function HomePage() {
             </span>
           </span>
         </div>
-        {showPwForm && (
-          <div
-            style={{
-              background: "#fff",
-              border: "1px solid var(--line)",
-              borderRadius: 8,
-              padding: 12,
-              marginBottom: 10,
-            }}
-          >
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", marginBottom: 8 }}>
-              비밀번호 변경
-            </div>
-            {pwError && (
-              <div className="login-error" style={{ marginBottom: 8 }}>
-                {pwError}
-              </div>
-            )}
-            {pwSuccess ? (
-              <div style={{ fontSize: 13, color: "var(--sinjin)" }}>✓ 비밀번호가 변경됐어요.</div>
-            ) : (
-              <>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={4}
-                  placeholder="현재 비밀번호 (4자리)"
-                  value={pwCurrent}
-                  onChange={(e) => setPwCurrent(e.target.value.replace(/[^0-9]/g, ""))}
-                  style={{ width: "100%", padding: "8px 10px", marginBottom: 6, fontSize: 14 }}
-                />
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={4}
-                  placeholder="새 비밀번호 (4자리)"
-                  value={pwNew}
-                  onChange={(e) => setPwNew(e.target.value.replace(/[^0-9]/g, ""))}
-                  style={{ width: "100%", padding: "8px 10px", marginBottom: 6, fontSize: 14 }}
-                />
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={4}
-                  placeholder="새 비밀번호 확인"
-                  value={pwNew2}
-                  onChange={(e) => setPwNew2(e.target.value.replace(/[^0-9]/g, ""))}
-                  style={{ width: "100%", padding: "8px 10px", marginBottom: 8, fontSize: 14 }}
-                />
-                <button className="btn-primary" onClick={handleChangePassword} disabled={pwBusy} style={{ marginTop: 0 }}>
-                  {pwBusy ? "변경 중..." : "변경하기"}
-                </button>
-              </>
-            )}
-          </div>
-        )}
       </div>
 
-      <>
+      {user.isAdmin && (
+        <>
           <div style={{ padding: "10px 16px 0 16px", display: "flex", gap: 6 }}>
             <input
               type="month"
@@ -483,10 +379,7 @@ export default function HomePage() {
               {laborReportLabel}
             </a>
           </div>
-      </>
 
-      {user.isAdmin && (
-        <>
           <div style={{ padding: "8px 16px 0 16px" }}>
             <Link
               href="/workers"
@@ -504,6 +397,16 @@ export default function HomePage() {
               style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
             >
               👥 사용자·권한 관리
+            </Link>
+          </div>
+
+          <div style={{ padding: "8px 16px 0 16px" }}>
+            <Link
+              href="/qr"
+              className="export-btn"
+              style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
+            >
+              📲 출역 QR 관리
             </Link>
           </div>
         </>
