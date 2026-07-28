@@ -2,9 +2,32 @@ import { NextRequest, NextResponse } from "next/server";
 // xlsx-js-style: SheetJS 커뮤니티판(xlsx)의 API 호환 포크로, 셀 스타일(가운데 정렬 등)을
 // 쓸 수 있다는 점만 다르다 — 이 리포트의 가운데 정렬 병합 셀 때문에 도입했다.
 import * as XLSX from "xlsx-js-style";
+import JSZip from "jszip";
 import { prisma } from "@/lib/prisma";
 import { COMPANIES } from "@/lib/erp";
 import { getReqUser } from "@/lib/authServer";
+
+// xlsx(-js-style) 라이브러리는 틀고정(freeze panes)을 쓰는 기능이 없어서, 생성된 xlsx를
+// zip으로 열어 해당 시트의 sheetView XML에 <pane> 태그를 직접 끼워 넣는 방식으로 구현한다.
+// sheetIndexes는 1부터 시작하는 sheetN.xml 번호(시트 순서와 동일)다.
+async function freezeSheets(buf: Buffer, sheetIndexes: number[], ySplit: number): Promise<Buffer> {
+  const zip = await JSZip.loadAsync(buf);
+  for (const idx of sheetIndexes) {
+    const path = `xl/worksheets/sheet${idx}.xml`;
+    const file = zip.file(path);
+    if (!file) continue;
+    const xml = await file.async("string");
+    const pane =
+      `<pane ySplit="${ySplit}" topLeftCell="A${ySplit + 1}" activePane="bottomLeft" state="frozen"/>` +
+      `<selection pane="bottomLeft" activeCell="A${ySplit + 1}" sqref="A${ySplit + 1}"/>`;
+    const patched = xml.replace(
+      /<sheetView([^>]*)\/>/,
+      (_m, attrs) => `<sheetView${attrs}>${pane}</sheetView>`
+    );
+    zip.file(path, patched);
+  }
+  return zip.generateAsync({ type: "nodebuffer" });
+}
 
 // 실제 회계팀 "일용임금대장" 양식을 그대로 재현한다 (\\172.30.1.200\98. 회계\일용직\일용임금대장).
 // 사람×단가 조합마다 2행(1~15일 / 16~31일)을 쓰고, 근무일수·일당·총액·차인지급액과 공제
@@ -418,13 +441,17 @@ export async function GET(req: NextRequest) {
   // 시트 순서를 노무비집계가 맨 앞에 오도록 재배치
   wb.SheetNames = ["노무비집계", ...companyTotalRows.map((c) => c.sheetName), "사원명부"];
 
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  let buf: Buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  // 회사별 시트(2번째~4번째)는 7행까지(제목·근무기간·헤더·일자 라벨)를 얼려서
+  // 아래로 스크롤해도 상단이 계속 보이게 한다.
+  const companySheetIndexes = companyTotalRows.map((_, i) => 2 + i);
+  buf = await freezeSheets(buf, companySheetIndexes, 7);
 
   const today = new Date().toISOString().slice(0, 10);
   const label = month || "전체기간";
   const filename = encodeURIComponent(`일용임금대장_${label}_${today}.xlsx`);
 
-  return new NextResponse(buf, {
+  return new NextResponse(new Uint8Array(buf), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename*=UTF-8''${filename}`,
