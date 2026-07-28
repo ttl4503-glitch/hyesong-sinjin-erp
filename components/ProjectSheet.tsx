@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   COMPANIES,
   Project,
@@ -15,10 +15,11 @@ import {
   todayStr,
   totalInvestedCost,
 } from "@/lib/erp";
-import { api } from "@/lib/api";
+import { api, type ManagedUser } from "@/lib/api";
 import type { ParsedWorkItem } from "@/lib/parseWorkItems";
 import { compressImage } from "@/lib/compressImage";
 import { extractReceiptAmount } from "@/lib/receiptOcr";
+import { useAuth } from "@/components/AuthProvider";
 
 const RECEIPT_TYPES = ["장비", "자재", "식대", "참", "운반비", "잡자재"];
 const TAX_INVOICE_TYPES = ["장비", "자재", "운반비", "잡자재"];
@@ -172,6 +173,30 @@ export default function ProjectSheet({
   onDeleted: (id: string) => void;
 }) {
   const isEdit = mode === "edit" && !!project;
+  const { user: authUser } = useAuth();
+
+  const [staffUsers, setStaffUsers] = useState<ManagedUser[]>([]);
+  const [staffError, setStaffError] = useState("");
+
+  useEffect(() => {
+    if (!isEdit || !project || !authUser.isAdmin) return;
+    api
+      .listUsers()
+      .then((us) => setStaffUsers(us.filter((u) => !u.isAdmin)))
+      .catch((e) => setStaffError(e.message || "직원 목록을 불러오지 못했어요."));
+  }, [isEdit, project?.id, authUser.isAdmin]);
+
+  async function toggleStaffAccess(staff: ManagedUser) {
+    if (!project) return;
+    const has = staff.projectIds.includes(project.id);
+    const nextIds = has ? staff.projectIds.filter((id) => id !== project.id) : [...staff.projectIds, project.id];
+    try {
+      const updated = await api.updateUser(staff.id, { projectIds: nextIds });
+      setStaffUsers((prev) => prev.map((u) => (u.id === staff.id ? updated : u)));
+    } catch (e: any) {
+      setStaffError(e.message || "권한 변경에 실패했어요.");
+    }
+  }
 
   const [form, setForm] = useState({
     company: project?.company || defaultCompany || COMPANIES[0],
@@ -837,8 +862,40 @@ export default function ProjectSheet({
             </>
           )}
         </div>
-        {isEdit && project && (
+        {isEdit && project && authUser.isAdmin && (
           <>
+            <div className="ms-title">담당 직원 지정</div>
+            <div className="wi-box">
+              {staffError && <div className="login-error">{staffError}</div>}
+              {staffUsers.length === 0 ? (
+                <div style={{ fontSize: 12.5, color: "#8a8371" }}>
+                  등록된 직원이 없어요. "사용자·권한 관리"에서 먼저 직원을 등록해주세요.
+                </div>
+              ) : (
+                staffUsers.map((s) => (
+                  <label
+                    key={s.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 0",
+                      borderBottom: "1px solid var(--line)",
+                      fontSize: 14,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={s.projectIds.includes(project.id)}
+                      onChange={() => toggleStaffAccess(s)}
+                      style={{ width: 18, height: 18 }}
+                    />
+                    {s.name}
+                  </label>
+                ))
+              )}
+            </div>
             <div className="ms-title">착공내역서 · 공종별 진행률</div>
             <div className="wi-box">
               {boqPreview ? (
