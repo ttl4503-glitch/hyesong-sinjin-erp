@@ -88,7 +88,6 @@ export default function WorkersPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm());
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -99,6 +98,50 @@ export default function WorkersPage() {
 
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+
+  // 목록에서 ✎를 누르면 그 자리에서 바로 수정 — 위쪽 등록 폼과는 별개의 상태로 관리한다.
+  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
+  const [inlineForm, setInlineForm] = useState(emptyForm());
+  const [inlineError, setInlineError] = useState("");
+  const [inlineSaving, setInlineSaving] = useState(false);
+
+  function startInlineEdit(w: Worker) {
+    setInlineEditId(w.id);
+    setInlineForm({
+      name: w.name,
+      jobType: w.jobType,
+      idFront: w.idFront,
+      phone: w.phone,
+      bankName: w.bankName,
+      account: w.account,
+    });
+    setInlineError("");
+  }
+
+  function cancelInlineEdit() {
+    setInlineEditId(null);
+    setInlineForm(emptyForm());
+    setInlineError("");
+  }
+
+  async function handleInlineSave() {
+    if (!inlineEditId) return;
+    if (!inlineForm.name.trim()) {
+      setInlineError("이름을 입력해주세요.");
+      return;
+    }
+    setInlineError("");
+    setInlineSaving(true);
+    try {
+      const updated = await api.updateWorker(inlineEditId, inlineForm);
+      setWorkers((prev) => prev.map((w) => (w.id === inlineEditId ? updated : w)));
+      cancelInlineEdit();
+    } catch (e: any) {
+      setInlineError(e.message || "저장 중 오류가 발생했어요.");
+    } finally {
+      setInlineSaving(false);
+    }
+  }
 
   function toggleReveal(id: string) {
     setRevealedIds((prev) => {
@@ -127,24 +170,10 @@ export default function WorkersPage() {
   const knownPersonNames = getKnownNames(projects).filter((k) => k.type === "인력");
   const knownJobTypes = getKnownJobTypes(projects);
 
-  function startEdit(w: Worker) {
-    setEditingId(w.id);
-    setForm({
-      name: w.name,
-      jobType: w.jobType,
-      idFront: w.idFront,
-      phone: w.phone,
-      bankName: w.bankName,
-      account: w.account,
-    });
-    setOcrText("");
-    setError("");
-  }
-
-  function cancelEdit() {
-    setEditingId(null);
+  function resetForm() {
     setForm(emptyForm());
     setOcrText("");
+    setError("");
   }
 
   async function handleSave() {
@@ -155,14 +184,9 @@ export default function WorkersPage() {
     setError("");
     setSaving(true);
     try {
-      if (editingId) {
-        const updated = await api.updateWorker(editingId, form);
-        setWorkers((prev) => prev.map((w) => (w.id === editingId ? updated : w)));
-      } else {
-        const created = await api.createWorker(form);
-        setWorkers((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
-      }
-      cancelEdit();
+      const created = await api.createWorker(form);
+      setWorkers((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      resetForm();
     } catch (e: any) {
       setError(e.message || "저장 중 오류가 발생했어요.");
     } finally {
@@ -174,7 +198,7 @@ export default function WorkersPage() {
     if (!confirm("이 인원을 삭제할까요?")) return;
     await api.deleteWorker(id);
     setWorkers((prev) => prev.filter((w) => w.id !== id));
-    if (editingId === id) cancelEdit();
+    if (inlineEditId === id) cancelInlineEdit();
   }
 
   async function runOcr(file: File): Promise<string> {
@@ -280,7 +304,7 @@ export default function WorkersPage() {
       </div>
 
       <div className="wi-box" style={{ margin: "0 16px 16px 16px" }}>
-        <div className="wi-summary">{editingId ? "인원 정보 수정" : "새 인원 등록"}</div>
+        <div className="wi-summary">새 인원 등록</div>
         {error && <div className="login-error" style={{ marginTop: 8 }}>{error}</div>}
 
         <div className="row2" style={{ marginTop: 10 }}>
@@ -398,13 +422,8 @@ export default function WorkersPage() {
         )}
 
         <button className="btn-primary" onClick={handleSave} disabled={saving}>
-          {saving ? "저장 중..." : editingId ? "수정 저장" : "등록"}
+          {saving ? "저장 중..." : "등록"}
         </button>
-        {editingId && (
-          <button className="btn-ghost" onClick={cancelEdit}>
-            취소
-          </button>
-        )}
       </div>
 
       <div className="section-label">
@@ -452,6 +471,71 @@ export default function WorkersPage() {
           }
 
           return filtered.map((w) => {
+            if (inlineEditId === w.id) {
+              return (
+                <div className="user-row" key={w.id} style={{ cursor: "default", flexDirection: "column", alignItems: "stretch" }}>
+                  {inlineError && <div className="login-error" style={{ marginBottom: 8 }}>{inlineError}</div>}
+                  <div className="row2">
+                    <div className="field">
+                      <label>이름</label>
+                      <input
+                        value={inlineForm.name}
+                        onChange={(e) => setInlineForm({ ...inlineForm, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="field">
+                      <label>직종</label>
+                      <input
+                        value={inlineForm.jobType}
+                        onChange={(e) => setInlineForm({ ...inlineForm, jobType: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="row2">
+                    <div className="field">
+                      <label>주민번호</label>
+                      <input
+                        value={inlineForm.idFront}
+                        maxLength={14}
+                        onChange={(e) => setInlineForm({ ...inlineForm, idFront: e.target.value })}
+                      />
+                    </div>
+                    <div className="field">
+                      <label>핸드폰번호</label>
+                      <input
+                        value={inlineForm.phone}
+                        onChange={(e) => setInlineForm({ ...inlineForm, phone: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="row2">
+                    <div className="field">
+                      <label>은행명</label>
+                      <input
+                        value={inlineForm.bankName}
+                        onChange={(e) => setInlineForm({ ...inlineForm, bankName: e.target.value })}
+                      />
+                    </div>
+                    <div className="field">
+                      <label>계좌번호</label>
+                      <input
+                        value={inlineForm.account}
+                        onChange={(e) => setInlineForm({ ...inlineForm, account: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    <button className="btn-primary" style={{ marginTop: 0 }} onClick={handleInlineSave} disabled={inlineSaving}>
+                      {inlineSaving ? "저장 중..." : "수정 저장"}
+                    </button>
+                    <button className="btn-ghost" style={{ marginTop: 0 }} onClick={cancelInlineEdit}>
+                      취소
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
             const dupColor = colorById.get(w.id);
             const revealed = revealedIds.has(w.id);
             return (
@@ -482,7 +566,7 @@ export default function WorkersPage() {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 10 }} onClick={(e) => e.stopPropagation()}>
-                  <div className="lg-edit" onClick={() => startEdit(w)}>
+                  <div className="lg-edit" onClick={() => startInlineEdit(w)}>
                     ✎
                   </div>
                   <div className="lg-del" onClick={() => handleDelete(w.id)}>
