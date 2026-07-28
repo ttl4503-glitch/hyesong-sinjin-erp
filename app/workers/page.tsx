@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import type { Worker } from "@/lib/erp";
+import { getKnownNames, getKnownJobTypes, type Project, type Worker } from "@/lib/erp";
+import { useAuth } from "@/components/AuthProvider";
 
 const ID_FRONT_RE = /\b(\d{6})[-\s]?\d{0,7}\b/;
 const ACCOUNT_RE = /\b(\d[\d-\s]{8,20}\d)\b/;
@@ -78,7 +79,9 @@ function emptyForm() {
 }
 
 export default function WorkersPage() {
+  const { user } = useAuth();
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -91,11 +94,22 @@ export default function WorkersPage() {
   const bankFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    api
-      .listWorkers()
-      .then(setWorkers)
+    if (!user.isAdmin) {
+      setLoading(false);
+      return;
+    }
+    Promise.all([api.listWorkers(), api.listProjects()])
+      .then(([ws, ps]) => {
+        setWorkers(ws);
+        setProjects(ps);
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [user.isAdmin]);
+
+  // 작업일보(인력 투입 기록)에 이미 쓰인 이름·직종을 자동완성 후보로 제공 —
+  // 명부에 등록할 때 작업일보와 표기가 어긋나지 않도록 돕는다.
+  const knownPersonNames = getKnownNames(projects).filter((k) => k.type === "인력");
+  const knownJobTypes = getKnownJobTypes(projects);
 
   function startEdit(w: Worker) {
     setEditingId(w.id);
@@ -200,6 +214,26 @@ export default function WorkersPage() {
     );
   }
 
+  if (!user.isAdmin) {
+    return (
+      <div className="app">
+        <div className="topbar">
+          <h1>
+            인원 명부 <span>주민번호·계좌 관리</span>
+          </h1>
+        </div>
+        <div style={{ padding: "16px" }}>
+          <div className="login-error">관리자만 접근할 수 있는 화면이에요.</div>
+          <div style={{ marginTop: 12 }}>
+            <Link href="/" className="back-link">
+              ← 돌아가기
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <div className="topbar">
@@ -227,11 +261,33 @@ export default function WorkersPage() {
         <div className="row2" style={{ marginTop: 10 }}>
           <div className="field">
             <label>이름</label>
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <input
+              value={form.name}
+              list="worker_name_options"
+              onChange={(e) => {
+                const name = e.target.value;
+                const known = knownPersonNames.find((k) => k.name === name);
+                setForm((f) => ({ ...f, name, jobType: known?.jobType ? known.jobType : f.jobType }));
+              }}
+            />
+            <datalist id="worker_name_options">
+              {knownPersonNames.map((k) => (
+                <option key={k.name} value={k.name} />
+              ))}
+            </datalist>
           </div>
           <div className="field">
             <label>직종</label>
-            <input value={form.jobType} onChange={(e) => setForm({ ...form, jobType: e.target.value })} />
+            <input
+              value={form.jobType}
+              list="worker_jobtype_options"
+              onChange={(e) => setForm({ ...form, jobType: e.target.value })}
+            />
+            <datalist id="worker_jobtype_options">
+              {knownJobTypes.map((j) => (
+                <option key={j} value={j} />
+              ))}
+            </datalist>
           </div>
         </div>
         <div className="row2">

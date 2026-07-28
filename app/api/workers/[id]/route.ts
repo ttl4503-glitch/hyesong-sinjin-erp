@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/authServer";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "관리자만 접근할 수 있어요." }, { status: 403 });
   const body = await req.json();
   const data: Record<string, unknown> = {};
   if (body.name !== undefined) data.name = String(body.name).trim();
@@ -14,7 +17,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   return NextResponse.json(worker);
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "관리자만 접근할 수 있어요." }, { status: 403 });
   await prisma.worker.delete({ where: { id: params.id } });
   return NextResponse.json({ ok: true });
 }

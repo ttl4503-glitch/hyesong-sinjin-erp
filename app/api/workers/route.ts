@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/authServer";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "관리자만 접근할 수 있어요." }, { status: 403 });
   const workers = await prisma.worker.findMany({ orderBy: { name: "asc" } });
   return NextResponse.json(workers);
 }
 
 export async function POST(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "관리자만 접근할 수 있어요." }, { status: 403 });
   const body = await req.json();
   const name = String(body.name || "").trim();
   if (!name) return NextResponse.json({ error: "이름을 입력해주세요." }, { status: 400 });
