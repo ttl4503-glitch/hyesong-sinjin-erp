@@ -400,7 +400,7 @@ export async function GET(req: NextRequest) {
     addBorder(wsSummary, r, 1);
     addBorder(wsSummary, r, 2);
   }
-  wsSummary["!cols"] = [{ wch: 4 }, { wch: 20 }, { wch: 24 }];
+  wsSummary["!cols"] = [{ wch: 4 }, { wch: 35 }, { wch: 35 }];
   const summaryRowsHeights: { hpt: number }[] = [];
   summaryRowsHeights[0] = { hpt: 44 };
   for (let r = 2; r <= summaryTotalRow; r++) summaryRowsHeights[r] = { hpt: 34 };
