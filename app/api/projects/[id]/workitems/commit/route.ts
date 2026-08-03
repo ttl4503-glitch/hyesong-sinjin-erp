@@ -33,10 +33,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }))
     .filter((it) => it.name && (it.amount > 0 || it.isHeader));
 
-  if (cleaned.length === 0) {
-    return NextResponse.json({ error: "저장할 공종 항목이 없어요." }, { status: 400 });
-  }
-
   const project = await prisma.project.findUnique({ where: { id: params.id } });
   if (!project) return NextResponse.json({ error: "not found" }, { status: 404 });
 
@@ -49,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const updateData: Record<string, unknown> = {
     workItemsTotal: total,
-    workItemsFileName: fileName,
+    workItemsFileName: cleaned.length === 0 ? "" : fileName,
   };
   if (!project.contractAmount || project.contractAmount <= 0) {
     updateData.contractAmount = total;
