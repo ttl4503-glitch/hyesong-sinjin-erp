@@ -1867,10 +1867,12 @@ export default function ProjectSheet({
               {groupedLogs.map((g) => {
                 const isOpen = !!openTypes[g.type];
                 const isLabor = g.type === "인력" || g.type === "장비";
+                const ratio = project.contractAmount > 0 ? (g.amount / project.contractAmount) * 100 : null;
                 const metaParts = [
                   `${g.logs.length}건`,
                   isLabor ? `${g.qty}공수` : "",
                   `${formatWon(g.amount)}원`,
+                  ratio !== null ? `공사금액 대비 ${ratio.toFixed(1)}%` : "",
                 ].filter(Boolean);
                 return (
                   <div className="lg-group" key={g.type}>
