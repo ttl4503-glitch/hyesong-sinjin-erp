@@ -5,7 +5,14 @@ import { todayStr } from "@/lib/erp";
 
 type Info = { siteName: string; isFixedSite: boolean; completed: boolean; names: string[]; equipNames: string[] };
 type EntryType = "인력" | "장비";
-type Result = { status: "checkin" | "checkout" | "already"; name: string; type: EntryType; siteName: string };
+type Action = "checkin" | "checkout";
+type Result = {
+  status: "checkin" | "checkout" | "already";
+  name: string;
+  type: EntryType;
+  siteName: string;
+  actionAttempted: Action;
+};
 
 // 휴대폰(브라우저) 1대당 오늘 이 현장에서 인력/장비 각각 하나만 등록할 수 있게
 // localStorage에 기록해둔다 (같은 사람·같은 장비의 퇴근 처리는 고정 현장에서 계속 허용).
@@ -32,6 +39,7 @@ export default function CheckinPage() {
   const [info, setInfo] = useState<Info | null>(null);
   const [loadError, setLoadError] = useState("");
   const [type, setType] = useState<EntryType>("인력");
+  const [action, setAction] = useState<Action>("checkin");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -82,12 +90,13 @@ export default function CheckinPage() {
       );
       return;
     }
+    const currentAction: Action = info?.isFixedSite ? action : "checkin";
     setBusy(true);
     try {
       const res = await fetch("/api/checkin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ site, name: name.trim(), date: todayStr(), type }),
+        body: JSON.stringify({ site, name: name.trim(), date: todayStr(), type, action: currentAction }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -99,7 +108,7 @@ export default function CheckinPage() {
         if (type === "인력") setLockedPerson(name.trim());
         else setLockedEquip(name.trim());
       }
-      setResult(body);
+      setResult({ ...body, actionAttempted: currentAction });
     } catch {
       setError("연결에 실패했어요. 잠시 후 다시 시도하세요.");
     } finally {
@@ -119,21 +128,26 @@ export default function CheckinPage() {
   if (result) {
     const ok = result.status === "checkin" || result.status === "checkout";
     const isEquip = result.type === "장비";
+    const isCheckoutAttempt = result.actionAttempted === "checkout";
     const title =
       result.status === "checkin"
         ? isEquip
           ? "장비 등록 완료!"
-          : "출역 완료!"
+          : "출근 완료!"
         : result.status === "checkout"
-        ? "퇴근 처리 완료!"
+        ? "퇴근 완료!"
+        : isCheckoutAttempt
+        ? "이미 퇴근했어요"
         : isEquip
         ? "이미 등록됐어요"
-        : "이미 출역했어요";
+        : "이미 출근했어요";
     const sub =
       result.status === "checkin"
         ? "오늘 작업일보에 등록되었어요."
         : result.status === "checkout"
         ? "퇴근 시각이 기록되었어요."
+        : isCheckoutAttempt
+        ? "오늘 이미 퇴근 처리가 됐어요."
         : "오늘은 이미 등록되어 있어요.";
     return (
       <div style={{ minHeight: "100vh", background: "#f4f1e9", paddingTop: 40 }}>
@@ -215,6 +229,21 @@ export default function CheckinPage() {
     background: type === t ? "#3f6f52" : "#fff",
     color: type === t ? "#fff" : "#6b6555",
   });
+  const actionPill = (a: Action): React.CSSProperties => {
+    const activeColor = a === "checkout" ? "#b0392b" : "#3f6f52";
+    return {
+      flex: 1,
+      padding: "11px 0",
+      textAlign: "center",
+      borderRadius: 9,
+      fontWeight: 800,
+      fontSize: 15,
+      cursor: "pointer",
+      border: "1px solid " + (action === a ? activeColor : "#d8d2c2"),
+      background: action === a ? activeColor : "#fff",
+      color: action === a ? "#fff" : "#6b6555",
+    };
+  };
 
   // ===== 입력 화면 =====
   return (
@@ -225,7 +254,7 @@ export default function CheckinPage() {
           <div style={{ fontSize: 20, fontWeight: 800, color: "#2f3a2f", marginTop: 2 }}>{info.siteName}</div>
           {info.isFixedSite && (
             <div style={{ fontSize: 12, color: "#3f6f52", marginTop: 4 }}>
-              고정 현장 · 나갈 때 한 번 더 찍으면 퇴근 처리돼요
+              고정 현장 · 출근/퇴근을 선택하고 찍어주세요
             </div>
           )}
         </div>
@@ -247,10 +276,33 @@ export default function CheckinPage() {
             </div>
           )}
 
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: info.isFixedSite ? 10 : 16 }}>
             <div style={pill("인력")} onClick={() => switchType("인력")}>👷 인력</div>
             <div style={pill("장비")} onClick={() => switchType("장비")}>🚜 장비</div>
           </div>
+
+          {info.isFixedSite && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              <div
+                style={actionPill("checkin")}
+                onClick={() => {
+                  setAction("checkin");
+                  setError("");
+                }}
+              >
+                🟢 출근
+              </div>
+              <div
+                style={actionPill("checkout")}
+                onClick={() => {
+                  setAction("checkout");
+                  setError("");
+                }}
+              >
+                🔴 퇴근
+              </div>
+            </div>
+          )}
 
           <label style={{ fontSize: 13, color: "#6b6555", fontWeight: 600 }}>
             {isEquip ? "장비명" : "이름"}
@@ -304,13 +356,21 @@ export default function CheckinPage() {
               padding: 16,
               border: "none",
               borderRadius: 10,
-              background: busy ? "#9bb0a2" : "#3f6f52",
+              background: busy ? "#9bb0a2" : action === "checkout" && info.isFixedSite ? "#b0392b" : "#3f6f52",
               color: "#fff",
               fontSize: 17,
               fontWeight: 800,
             }}
           >
-            {busy ? "처리 중..." : isEquip ? "장비 등록하기" : "출역하기"}
+            {busy
+              ? "처리 중..."
+              : info.isFixedSite
+              ? action === "checkout"
+                ? "퇴근하기"
+                : "출근하기"
+              : isEquip
+              ? "장비 등록하기"
+              : "출역하기"}
           </button>
         </div>
       </div>

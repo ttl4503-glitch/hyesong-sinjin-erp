@@ -31,15 +31,16 @@ export async function GET(req: NextRequest) {
   });
 }
 
-// POST /api/checkin  { site, name, date, type? }
+// POST /api/checkin  { site, name, date, type?, action? }
 // type: "인력"(기본) | "장비". 오늘 그 현장 작업일보에 1공수 자동 등록. 하루 1회 중복 방지.
-// 고정현장이면 두 번째 스캔 시 퇴근 시각 기록.
+// action: "checkin"(기본) | "checkout" — 고정 현장은 화면에서 출근/퇴근을 직접 골라 보낸다.
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const site = String(body.site || "");
   const name = String(body.name || "").trim();
   const date = String(body.date || "").trim();
   const type = body.type === "장비" ? "장비" : "인력";
+  const action = body.action === "checkout" ? "checkout" : "checkin";
 
   if (!site) return NextResponse.json({ error: "현장 정보가 없어요." }, { status: 400 });
   if (!name) {
@@ -61,11 +62,21 @@ export async function POST(req: NextRequest) {
     where: { projectId: site, date, name, type, source: "qr" },
   });
 
-  if (existing) {
-    if (project.isFixedSite && !existing.checkOutAt) {
-      await prisma.laborLog.update({ where: { id: existing.id }, data: { checkOutAt: new Date() } });
-      return NextResponse.json({ status: "checkout", name, type, siteName: project.name });
+  if (action === "checkout") {
+    if (!project.isFixedSite) {
+      return NextResponse.json({ error: "고정 현장이 아니라서 퇴근 처리를 할 수 없어요." }, { status: 400 });
     }
+    if (!existing) {
+      return NextResponse.json({ error: "오늘 출근 기록이 없어요. 먼저 출근을 눌러주세요." }, { status: 400 });
+    }
+    if (existing.checkOutAt) {
+      return NextResponse.json({ status: "already", name, type, siteName: project.name });
+    }
+    await prisma.laborLog.update({ where: { id: existing.id }, data: { checkOutAt: new Date() } });
+    return NextResponse.json({ status: "checkout", name, type, siteName: project.name });
+  }
+
+  if (existing) {
     return NextResponse.json({ status: "already", name, type, siteName: project.name });
   }
 
