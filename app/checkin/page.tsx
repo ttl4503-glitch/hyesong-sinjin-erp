@@ -203,7 +203,7 @@ export default function CheckinPage() {
                 fontWeight: 700,
               }}
             >
-              계속 등록하기
+              확인
             </button>
           </div>
         </div>
