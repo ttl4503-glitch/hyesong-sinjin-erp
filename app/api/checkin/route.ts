@@ -72,8 +72,15 @@ export async function POST(req: NextRequest) {
     if (existing.checkOutAt) {
       return NextResponse.json({ status: "already", name, type, siteName: project.name });
     }
-    await prisma.laborLog.update({ where: { id: existing.id }, data: { checkOutAt: new Date() } });
-    return NextResponse.json({ status: "checkout", name, type, siteName: project.name });
+    // 퇴근 시각 기준(한국시간) 오후 1시 이전이면 0.5공수, 그 이후면 1공수로 확정
+    const now = new Date();
+    const kstHour = (now.getUTCHours() + 9) % 24;
+    const qty = kstHour < 13 ? 0.5 : 1;
+    await prisma.laborLog.update({
+      where: { id: existing.id },
+      data: { checkOutAt: now, qty, amount: qty * existing.rate },
+    });
+    return NextResponse.json({ status: "checkout", name, type, siteName: project.name, qty });
   }
 
   if (existing) {
