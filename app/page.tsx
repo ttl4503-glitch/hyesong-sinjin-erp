@@ -439,6 +439,16 @@ export default function HomePage() {
 
           <div style={{ padding: "8px 16px 0 16px" }}>
             <Link
+              href="/daily-report"
+              className="export-btn"
+              style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
+            >
+              📅 날짜별 작업일보 모아보기
+            </Link>
+          </div>
+
+          <div style={{ padding: "8px 16px 0 16px" }}>
+            <Link
               href="/trash"
               className="export-btn"
               style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
