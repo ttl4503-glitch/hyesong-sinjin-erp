@@ -126,10 +126,10 @@ export default function HomePage() {
 
   const monthlyReportLabel =
     monthlyScope === "company"
-      ? `📊 장비·자재 집계 (${monthlyCompany})`
+      ? `📊 장비·자재·운반비 집계 (${monthlyCompany})`
       : monthlyScope === "project"
-      ? `📊 장비·자재 집계 (${allProjectsSorted.find((p) => p.id === monthlyProjectId)?.name || "현장 선택"})`
-      : `📊 장비·자재 집계 (${allCompaniesLabel} 합산)`;
+      ? `📊 장비·자재·운반비 집계 (${allProjectsSorted.find((p) => p.id === monthlyProjectId)?.name || "현장 선택"})`
+      : `📊 장비·자재·운반비 집계 (${allCompaniesLabel} 합산)`;
 
   function updateProjectInList(updated: Project) {
     setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -414,6 +414,16 @@ export default function HomePage() {
               style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
             >
               👤 인원 명부 관리 (주민번호·계좌)
+            </Link>
+          </div>
+
+          <div style={{ padding: "8px 16px 0 16px" }}>
+            <Link
+              href="/vendors"
+              className="export-btn"
+              style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
+            >
+              🏢 거래처 명부 관리
             </Link>
           </div>
 

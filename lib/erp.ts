@@ -17,6 +17,19 @@ export interface Worker {
   account: string;
 }
 
+export interface Vendor {
+  id: string;
+  name: string;
+  bizRegNo: string;
+  ceoName: string;
+  managerName: string;
+  phone: string;
+  mobile: string;
+  bankName: string;
+  account: string;
+  email: string;
+}
+
 export interface Milestone {
   id: string;
   title: string;

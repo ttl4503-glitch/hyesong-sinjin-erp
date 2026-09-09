@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
 import { COMPANIES } from "@/lib/erp";
 import { getReqUser } from "@/lib/authServer";
+import type { Vendor } from "@prisma/client";
 
 interface Row {
   name: string;
@@ -43,21 +44,67 @@ function taxLabel(taxYes: number, taxNo: number) {
   return taxYes > 0 ? "발행" : "미발행";
 }
 
-function buildVendorSheet(scopeLabel: string, month: string, nameHeader: string, agg: Record<string, VendorAgg>) {
+function buildVendorSheet(
+  scopeLabel: string,
+  month: string,
+  nameHeader: string,
+  agg: Record<string, VendorAgg>,
+  vendorMap: Map<string, Vendor>
+) {
   const rows: (string | number)[][] = [
     [`집계 범위: ${scopeLabel}${month ? " · " + month : " · 전체기간"}`],
-    [nameHeader, "업체명", "금액 합계(원)", "세금계산서"],
+    [
+      nameHeader,
+      "업체명",
+      "사업자등록번호",
+      "대표자성명",
+      "담당자성명",
+      "전화번호",
+      "휴대폰",
+      "은행명",
+      "계좌번호",
+      "이메일",
+      "금액 합계(원)",
+      "세금계산서",
+    ],
   ];
   let total = 0;
   Object.values(agg)
     .sort((a, b) => a.name.localeCompare(b.name))
     .forEach((v) => {
-      rows.push([v.name, v.vendor, v.totalAmount, taxLabel(v.taxYes, v.taxNo)]);
+      const vendorInfo = vendorMap.get(v.vendor.trim());
+      rows.push([
+        v.name,
+        v.vendor,
+        vendorInfo?.bizRegNo || "",
+        vendorInfo?.ceoName || "",
+        vendorInfo?.managerName || "",
+        vendorInfo?.phone || "",
+        vendorInfo?.mobile || "",
+        vendorInfo?.bankName || "",
+        vendorInfo?.account || "",
+        vendorInfo?.email || "",
+        v.totalAmount,
+        taxLabel(v.taxYes, v.taxNo),
+      ]);
       total += v.totalAmount;
     });
-  rows.push(["총 합계", "", total, ""]);
+  rows.push(["총 합계", "", "", "", "", "", "", "", "", "", total, ""]);
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [{ wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 20 }];
+  ws["!cols"] = [
+    { wch: 20 },
+    { wch: 16 },
+    { wch: 14 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 10 },
+    { wch: 18 },
+    { wch: 20 },
+    { wch: 14 },
+    { wch: 20 },
+  ];
   return ws;
 }
 
@@ -183,19 +230,22 @@ export async function GET(req: NextRequest) {
   const wsEquip = XLSX.utils.aoa_to_sheet(equipRows);
   wsEquip["!cols"] = [{ wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 20 }];
 
-  const wsMaterial = buildVendorSheet(scopeLabel, month, "자재명", materials);
-  const wsFreight = buildVendorSheet(scopeLabel, month, "운반비 항목", freight);
+  const vendors = await prisma.vendor.findMany({ where: { deletedAt: null } });
+  const vendorMap = new Map(vendors.map((v) => [v.name.trim(), v]));
+
+  const wsMaterial = buildVendorSheet(scopeLabel, month, "자재명", materials, vendorMap);
+  const wsFreight = buildVendorSheet(scopeLabel, month, "운반비 항목", freight, vendorMap);
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "장비자재집계");
+  XLSX.utils.book_append_sheet(wb, ws, "장비자재운반비집계");
   XLSX.utils.book_append_sheet(wb, wsEquip, "장비상세");
-  XLSX.utils.book_append_sheet(wb, wsMaterial, "자재상세");
-  XLSX.utils.book_append_sheet(wb, wsFreight, "운반비상세");
+  XLSX.utils.book_append_sheet(wb, wsMaterial, "자재상세(거래처)");
+  XLSX.utils.book_append_sheet(wb, wsFreight, "운반비상세(거래처)");
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
   const today = new Date().toISOString().slice(0, 10);
   const label = month || "전체기간";
-  const filename = encodeURIComponent(`${scopeLabel}_장비자재집계_${label}_${today}.xlsx`);
+  const filename = encodeURIComponent(`${scopeLabel}_장비자재운반비집계_${label}_${today}.xlsx`);
 
   return new NextResponse(buf, {
     headers: {

@@ -1,4 +1,4 @@
-import type { Project, Worker } from "@/lib/erp";
+import type { Project, Worker, Vendor } from "@/lib/erp";
 import type { ParsedWorkItem } from "@/lib/parseWorkItems";
 
 export interface WorkItemsParseResult {
@@ -148,6 +148,25 @@ export const api = {
   deleteWorker: (id: string): Promise<{ ok: true }> =>
     fetch(`/api/workers/${id}`, { method: "DELETE", headers: authHeaders() }).then(handle),
 
+  listVendors: (): Promise<Vendor[]> => fetch("/api/vendors", { headers: authHeaders() }).then(handle),
+
+  createVendor: (data: Partial<Vendor>): Promise<Vendor> =>
+    fetch("/api/vendors", {
+      method: "POST",
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+    }).then(handle),
+
+  updateVendor: (id: string, data: Partial<Vendor>): Promise<Vendor> =>
+    fetch(`/api/vendors/${id}`, {
+      method: "PATCH",
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+    }).then(handle),
+
+  deleteVendor: (id: string): Promise<{ ok: true }> =>
+    fetch(`/api/vendors/${id}`, { method: "DELETE", headers: authHeaders() }).then(handle),
+
   uploadReceipt: (logId: string, imageData: string): Promise<{ id: string }> =>
     fetch(`/api/laborlogs/${logId}/receipt`, {
       method: "POST",
@@ -196,11 +215,12 @@ export const api = {
     }).then(handle),
 };
 
-export type TrashType = "project" | "worker" | "user" | "laborlog" | "receipt";
+export type TrashType = "project" | "worker" | "vendor" | "user" | "laborlog" | "receipt";
 
 export interface TrashData {
   projects: { id: string; company: string; name: string; location: string; deletedAt: string }[];
   workers: { id: string; name: string; jobType: string; idFront: string; deletedAt: string }[];
+  vendors: { id: string; name: string; ceoName: string; bizRegNo: string; deletedAt: string }[];
   users: { id: string; name: string; isAdmin: boolean; deletedAt: string }[];
   laborLogs: {
     id: string;

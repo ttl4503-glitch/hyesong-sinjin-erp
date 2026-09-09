@@ -7,12 +7,16 @@ export async function GET(req: NextRequest) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "관리자만 접근할 수 있어요." }, { status: 403 });
 
-  const [projects, workers, users, laborLogs, receipts] = await Promise.all([
+  const [projects, workers, vendors, users, laborLogs, receipts] = await Promise.all([
     prisma.project.findMany({
       where: { deletedAt: { not: null } },
       orderBy: { deletedAt: "desc" },
     }),
     prisma.worker.findMany({
+      where: { deletedAt: { not: null } },
+      orderBy: { deletedAt: "desc" },
+    }),
+    prisma.vendor.findMany({
       where: { deletedAt: { not: null } },
       orderBy: { deletedAt: "desc" },
     }),
@@ -48,6 +52,13 @@ export async function GET(req: NextRequest) {
       jobType: w.jobType,
       idFront: w.idFront,
       deletedAt: w.deletedAt,
+    })),
+    vendors: vendors.map((v) => ({
+      id: v.id,
+      name: v.name,
+      ceoName: v.ceoName,
+      bizRegNo: v.bizRegNo,
+      deletedAt: v.deletedAt,
     })),
     users: users.map((u) => ({
       id: u.id,
@@ -95,6 +106,8 @@ export async function POST(req: NextRequest) {
       await prisma.project.update({ where: { id }, data: { deletedAt: null } });
     } else if (type === "worker") {
       await prisma.worker.update({ where: { id }, data: { deletedAt: null } });
+    } else if (type === "vendor") {
+      await prisma.vendor.update({ where: { id }, data: { deletedAt: null } });
     } else if (type === "user") {
       await prisma.appUser.update({ where: { id }, data: { deletedAt: null } });
     } else if (type === "laborlog") {

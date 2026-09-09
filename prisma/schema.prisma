@@ -56,6 +56,22 @@ model Worker {
   updatedAt DateTime @updatedAt
 }
 
+model Vendor {
+  id          String    @id @default(cuid())
+  name        String // 거래처명 (동명 업체 있을 수 있음)
+  bizRegNo    String    @default("") // 사업자등록번호
+  ceoName     String    @default("") // 대표자성명
+  managerName String    @default("") // 담당자성명
+  phone       String    @default("") // 전화번호
+  mobile      String    @default("") // 휴대폰
+  bankName    String    @default("") // 은행명
+  account     String    @default("") // 계좌번호
+  email       String    @default("") // 이메일
+  deletedAt   DateTime? // 휴지통 (관리자 복구 가능) — null이면 정상
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
 model DailyNote {
   id        String  @id @default(cuid())
   projectId String
