@@ -30,6 +30,17 @@ export interface Vendor {
   email: string;
 }
 
+export interface EquipmentVendor {
+  id: string;
+  name: string;
+  contactName: string;
+  bizRegNo: string;
+  mobile: string;
+  bankName: string;
+  account: string;
+  email: string;
+}
+
 export interface Milestone {
   id: string;
   title: string;

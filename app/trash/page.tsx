@@ -6,7 +6,15 @@ import { api, TrashData, TrashType } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
 import { formatWon } from "@/lib/erp";
 
-const EMPTY: TrashData = { projects: [], workers: [], vendors: [], users: [], laborLogs: [], receipts: [] };
+const EMPTY: TrashData = {
+  projects: [],
+  workers: [],
+  vendors: [],
+  equipmentVendors: [],
+  users: [],
+  laborLogs: [],
+  receipts: [],
+};
 
 function fmtWhen(iso: string) {
   if (!iso) return "";
@@ -84,6 +92,7 @@ export default function TrashPage() {
     data.projects.length +
     data.workers.length +
     data.vendors.length +
+    data.equipmentVendors.length +
     data.users.length +
     data.laborLogs.length +
     data.receipts.length;
@@ -189,6 +198,27 @@ export default function TrashPage() {
                 </div>
               </div>
               {restoreBtn("vendor", v.id)}
+            </div>
+          ))
+        )}
+
+        <div className="section-label" style={{ marginTop: 20 }}>
+          <span>🚜 삭제된 장비업체</span>
+          <span>{data.equipmentVendors.length}건</span>
+        </div>
+        {data.equipmentVendors.length === 0 ? (
+          <div className="empty">삭제된 장비업체가 없어요.</div>
+        ) : (
+          data.equipmentVendors.map((v) => (
+            <div key={v.id} style={rowStyle}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{v.name || "(상호 미입력)"}</div>
+                <div style={{ fontSize: 12, color: "#8a8371", marginTop: 2 }}>
+                  {v.contactName ? `담당 ${v.contactName}` : v.bizRegNo || "사업자번호 미등록"} · 삭제{" "}
+                  {fmtWhen(v.deletedAt)}
+                </div>
+              </div>
+              {restoreBtn("equipmentvendor", v.id)}
             </div>
           ))
         )}

@@ -1,4 +1,4 @@
-import type { Project, Worker, Vendor } from "@/lib/erp";
+import type { Project, Worker, Vendor, EquipmentVendor } from "@/lib/erp";
 import type { ParsedWorkItem } from "@/lib/parseWorkItems";
 
 export interface WorkItemsParseResult {
@@ -167,6 +167,26 @@ export const api = {
   deleteVendor: (id: string): Promise<{ ok: true }> =>
     fetch(`/api/vendors/${id}`, { method: "DELETE", headers: authHeaders() }).then(handle),
 
+  listEquipmentVendors: (): Promise<EquipmentVendor[]> =>
+    fetch("/api/equipment-vendors", { headers: authHeaders() }).then(handle),
+
+  createEquipmentVendor: (data: Partial<EquipmentVendor>): Promise<EquipmentVendor> =>
+    fetch("/api/equipment-vendors", {
+      method: "POST",
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+    }).then(handle),
+
+  updateEquipmentVendor: (id: string, data: Partial<EquipmentVendor>): Promise<EquipmentVendor> =>
+    fetch(`/api/equipment-vendors/${id}`, {
+      method: "PATCH",
+      headers: jsonHeaders(),
+      body: JSON.stringify(data),
+    }).then(handle),
+
+  deleteEquipmentVendor: (id: string): Promise<{ ok: true }> =>
+    fetch(`/api/equipment-vendors/${id}`, { method: "DELETE", headers: authHeaders() }).then(handle),
+
   uploadReceipt: (logId: string, imageData: string): Promise<{ id: string }> =>
     fetch(`/api/laborlogs/${logId}/receipt`, {
       method: "POST",
@@ -215,12 +235,13 @@ export const api = {
     }).then(handle),
 };
 
-export type TrashType = "project" | "worker" | "vendor" | "user" | "laborlog" | "receipt";
+export type TrashType = "project" | "worker" | "vendor" | "equipmentvendor" | "user" | "laborlog" | "receipt";
 
 export interface TrashData {
   projects: { id: string; company: string; name: string; location: string; deletedAt: string }[];
   workers: { id: string; name: string; jobType: string; idFront: string; deletedAt: string }[];
   vendors: { id: string; name: string; ceoName: string; bizRegNo: string; deletedAt: string }[];
+  equipmentVendors: { id: string; name: string; contactName: string; bizRegNo: string; deletedAt: string }[];
   users: { id: string; name: string; isAdmin: boolean; deletedAt: string }[];
   laborLogs: {
     id: string;

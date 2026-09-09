@@ -3,27 +3,19 @@ import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
 import { COMPANIES } from "@/lib/erp";
 import { getReqUser } from "@/lib/authServer";
-import type { Vendor } from "@prisma/client";
+import type { Vendor, EquipmentVendor } from "@prisma/client";
 
-interface Row {
-  name: string;
-  eGongsu: number;
-  eCost: number;
-  materialCost: number;
-  freightCost: number;
-}
-
-function emptyRow(name: string): Row {
-  return { name, eGongsu: 0, eCost: 0, materialCost: 0, freightCost: 0 };
-}
-
-function rowTotal(r: Row) {
-  return r.eCost + r.materialCost + r.freightCost;
+interface MainAgg {
+  projectName: string;
+  vendor: string; // 업체명/상호명 (장비·자재·운반비 통합)
+  amount: number;
 }
 
 interface EquipAgg {
-  name: string;
-  jobType: string;
+  projectName: string;
+  name: string; // 장비명
+  jobType: string; // 이름 (운전자)
+  vendor: string; // 상호
   rates: Set<number>;
   totalQty: number;
   totalAmount: number;
@@ -138,7 +130,7 @@ export async function GET(req: NextRequest) {
     scopeLabel = proj ? proj.name : "현장";
   }
 
-  const byProject: Record<string, Row> = {};
+  const mainAgg: Record<string, MainAgg> = {};
   const equipment: Record<string, EquipAgg> = {};
   const materials: Record<string, VendorAgg> = {};
   const freight: Record<string, VendorAgg> = {};
@@ -148,18 +140,21 @@ export async function GET(req: NextRequest) {
       if (l.type !== "장비" && l.type !== "자재" && l.type !== "운반비") return;
       if (month && (l.date || "").slice(0, 7) !== month) return;
 
-      if (!byProject[p.id]) byProject[p.id] = emptyRow(p.name);
-      const row = byProject[p.id];
+      const vendorText = (l.vendor || "").trim();
+      const mainKey = `${p.id}||${vendorText}`;
+      if (!mainAgg[mainKey]) {
+        mainAgg[mainKey] = { projectName: p.name, vendor: vendorText, amount: 0 };
+      }
+      mainAgg[mainKey].amount += l.amount;
 
       if (l.type === "장비") {
-        row.eGongsu += l.qty;
-        row.eCost += l.amount;
-
-        const key = `${l.name}||${l.jobType}`;
+        const key = `${p.id}||${l.name}||${l.jobType}||${vendorText}`;
         if (!equipment[key]) {
           equipment[key] = {
+            projectName: p.name,
             name: l.name,
             jobType: l.jobType,
+            vendor: vendorText,
             rates: new Set(),
             totalQty: 0,
             totalAmount: 0,
@@ -175,9 +170,6 @@ export async function GET(req: NextRequest) {
         else eq.taxNo += 1;
       } else {
         const bucket = l.type === "자재" ? materials : freight;
-        if (l.type === "자재") row.materialCost += l.amount;
-        else row.freightCost += l.amount;
-
         const key = `${l.name}||${l.vendor}`;
         if (!bucket[key]) {
           bucket[key] = { name: l.name, vendor: l.vendor, totalAmount: 0, taxYes: 0, taxNo: 0 };
@@ -190,45 +182,73 @@ export async function GET(req: NextRequest) {
     });
   });
 
-  const rows: (string | number)[][] = [
+  // 메인 시트: 현장별로 업체(상호)당 합계금액만 — 세부 내역은 아래 상세 시트에서 확인
+  const mainRows: (string | number)[][] = [
     [`집계 범위: ${scopeLabel}${month ? " · " + month : " · 전체기간"}`],
-    ["현장명", "장비 공수", "장비 비용(원)", "자재대(원)", "운반비(원)", "합계 비용(원)"],
+    ["현장명", "업체명/상호명", "합계금액(원)"],
   ];
-
-  const grand = emptyRow("");
-  Object.values(byProject)
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .forEach((r) => {
-      rows.push([r.name, r.eGongsu, r.eCost, r.materialCost, r.freightCost, rowTotal(r)]);
-      grand.eGongsu += r.eGongsu;
-      grand.eCost += r.eCost;
-      grand.materialCost += r.materialCost;
-      grand.freightCost += r.freightCost;
+  let mainTotal = 0;
+  Object.values(mainAgg)
+    .sort((a, b) => a.projectName.localeCompare(b.projectName) || a.vendor.localeCompare(b.vendor))
+    .forEach((m) => {
+      mainRows.push([m.projectName, m.vendor || "(업체명 미입력)", m.amount]);
+      mainTotal += m.amount;
     });
+  mainRows.push(["총 합계", "", mainTotal]);
 
-  rows.push(["총 합계", grand.eGongsu, grand.eCost, grand.materialCost, grand.freightCost, rowTotal(grand)]);
+  const ws = XLSX.utils.aoa_to_sheet(mainRows);
+  ws["!cols"] = [{ wch: 26 }, { wch: 22 }, { wch: 16 }];
 
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [{ wch: 26 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+  const equipmentVendors = await prisma.equipmentVendor.findMany({ where: { deletedAt: null } });
+  const equipVendorMap = new Map<string, EquipmentVendor>(equipmentVendors.map((v) => [v.name.trim(), v]));
 
   const equipRows: (string | number)[][] = [
     [`집계 범위: ${scopeLabel}${month ? " · " + month : " · 전체기간"}`],
-    ["장비명", "이름", "단가", "공수", "합계금액(원)", "세금계산서"],
+    ["현장명", "장비명", "상호", "이름", "단가", "공수", "금액(원)", "사업자등록번호", "휴대폰", "은행명", "계좌번호", "이메일", "세금계산서"],
   ];
   let eqTotalQty = 0;
   let eqTotalAmount = 0;
   Object.values(equipment)
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => a.projectName.localeCompare(b.projectName) || a.name.localeCompare(b.name))
     .forEach((eq) => {
       const rateLabel = eq.rates.size === 1 ? Array.from(eq.rates)[0] : Array.from(eq.rates).join(" / ");
-      equipRows.push([eq.name, eq.jobType, rateLabel, eq.totalQty, eq.totalAmount, taxLabel(eq.taxYes, eq.taxNo)]);
+      const info = equipVendorMap.get(eq.vendor.trim());
+      equipRows.push([
+        eq.projectName,
+        eq.name,
+        eq.vendor,
+        eq.jobType,
+        rateLabel,
+        eq.totalQty,
+        eq.totalAmount,
+        info?.bizRegNo || "",
+        info?.mobile || "",
+        info?.bankName || "",
+        info?.account || "",
+        info?.email || "",
+        taxLabel(eq.taxYes, eq.taxNo),
+      ]);
       eqTotalQty += eq.totalQty;
       eqTotalAmount += eq.totalAmount;
     });
-  equipRows.push(["총 합계", "", "", eqTotalQty, eqTotalAmount, ""]);
+  equipRows.push(["총 합계", "", "", "", "", eqTotalQty, eqTotalAmount, "", "", "", "", "", ""]);
 
   const wsEquip = XLSX.utils.aoa_to_sheet(equipRows);
-  wsEquip["!cols"] = [{ wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 20 }];
+  wsEquip["!cols"] = [
+    { wch: 24 },
+    { wch: 18 },
+    { wch: 16 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 8 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 10 },
+    { wch: 18 },
+    { wch: 20 },
+    { wch: 20 },
+  ];
 
   const vendors = await prisma.vendor.findMany({ where: { deletedAt: null } });
   const vendorMap = new Map(vendors.map((v) => [v.name.trim(), v]));

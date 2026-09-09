@@ -25,7 +25,7 @@ const QR_SCRIPT = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.
 
 const RECEIPT_TYPES = ["장비", "자재", "식대", "참", "운반비", "잡자재"];
 const TAX_INVOICE_TYPES = ["장비", "자재", "운반비", "잡자재"];
-const VENDOR_TYPES = ["자재", "식대", "운반비", "잡자재"];
+const VENDOR_TYPES = ["장비", "자재", "식대", "운반비", "잡자재"];
 // Types that get OCR-based auto amount recognition when a receipt photo is
 // attached. 식대/참 are excluded on purpose — the amount is entered by hand
 // and the photo is just kept as backup proof, not auto-read.

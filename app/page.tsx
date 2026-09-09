@@ -429,6 +429,16 @@ export default function HomePage() {
 
           <div style={{ padding: "8px 16px 0 16px" }}>
             <Link
+              href="/equipment-vendors"
+              className="export-btn"
+              style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
+            >
+              🚜 장비 명부 관리
+            </Link>
+          </div>
+
+          <div style={{ padding: "8px 16px 0 16px" }}>
+            <Link
               href="/users"
               className="export-btn"
               style={{ width: "100%", padding: 10, display: "block", textAlign: "center", textDecoration: "none" }}
